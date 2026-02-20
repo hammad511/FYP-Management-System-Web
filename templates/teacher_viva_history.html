@@ -26,31 +26,39 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- Filter Panel (initially hidden) -->
                 <div class="card-body bg-light border-bottom" id="filterPanel" style="display: none;">
                     <form method="GET" action="{{ url_for('teacher_viva_history') }}" class="row g-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="col-md-4">
                             <label class="form-label">Status</label>
                             <select class="form-select form-select-sm" name="status">
                                 <option value="">All Statuses</option>
-                                <option value="Accepted" {% if request.args.get('status') == 'Accepted' %}selected{% endif %}>Accepted</option>
-                                <option value="Conditionally Accepted" {% if request.args.get('status') == 'Conditionally Accepted' %}selected{% endif %}>Conditionally Accepted</option>
-                                <option value="Deferred" {% if request.args.get('status') == 'Deferred' %}selected{% endif %}>Deferred</option>
+                                <option value="Accepted" {% if request.args.get('status')=='Accepted' %}selected{% endif
+                                    %}>Accepted</option>
+                                <option value="Conditionally Accepted" {% if
+                                    request.args.get('status')=='Conditionally Accepted' %}selected{% endif %}>
+                                    Conditionally Accepted</option>
+                                <option value="Deferred" {% if request.args.get('status')=='Deferred' %}selected{% endif
+                                    %}>Deferred</option>
                             </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Date Range</label>
                             <div class="input-group input-group-sm">
-                                <input type="date" class="form-control" name="date_from" value="{{ request.args.get('date_from') }}">
+                                <input type="date" class="form-control" name="date_from"
+                                    value="{{ request.args.get('date_from') }}">
                                 <span class="input-group-text">to</span>
-                                <input type="date" class="form-control" name="date_to" value="{{ request.args.get('date_to') }}">
+                                <input type="date" class="form-control" name="date_to"
+                                    value="{{ request.args.get('date_to') }}">
                             </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Search</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" name="search" placeholder="Group ID or project title" value="{{ request.args.get('search') }}">
+                                <input type="text" class="form-control" name="search"
+                                    placeholder="Group ID or project title" value="{{ request.args.get('search') }}">
                                 <button class="btn btn-primary" type="submit">
                                     <i class="bi bi-search"></i>
                                 </button>
@@ -58,7 +66,7 @@
                         </div>
                     </form>
                 </div>
-                
+
                 <div class="table-responsive">
                     <table class="table table-hover table-striped mb-0">
                         <thead class="table-light">
@@ -73,69 +81,72 @@
                         </thead>
                         <tbody>
                             {% if status_entries %}
-                                {% for entry in status_entries %}
-                                    <tr>
-                                        <td>{{ entry.updated_at.strftime('%Y-%m-%d') }}</td>
-                                        <td>{{ entry.group.group_id }}</td>
-                                        <td>{{ entry.group.project_title }}</td>
-                                        <td>
-                                            {% if entry.status == 'Accepted' %}
-                                                <span class="badge bg-success">Accepted</span>
-                                            {% elif entry.status == 'Conditionally Accepted' %}
-                                                <span class="badge bg-info">Conditionally Accepted</span>
-                                            {% elif entry.status == 'Deferred' %}
-                                                <span class="badge bg-danger">Deferred</span>
-                                            {% else %}
-                                                <span class="badge bg-secondary">{{ entry.status }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#feedbackModal{{ entry.id }}">
-                                                <i class="bi bi-eye me-1"></i>View
-                                            </button>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{{ url_for('project.update_project_status', group_id=entry.group.id) }}" class="btn btn-outline-primary">
-                                                    <i class="bi bi-pencil me-1"></i>Edit
-                                                </a>
-                                                <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#projectDetailsModal{{ entry.group.id }}">
-                                                    <i class="bi bi-info-circle me-1"></i>Details
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
+                            {% for entry in status_entries %}
+                            <tr>
+                                <td>{{ entry.updated_at.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ entry.group.group_id }}</td>
+                                <td>{{ entry.group.project_title }}</td>
+                                <td>
+                                    {% if entry.status == 'Accepted' %}
+                                    <span class="badge bg-success">Accepted</span>
+                                    {% elif entry.status == 'Conditionally Accepted' %}
+                                    <span class="badge bg-info">Conditionally Accepted</span>
+                                    {% elif entry.status == 'Deferred' %}
+                                    <span class="badge bg-danger">Deferred</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ entry.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                                        data-bs-target="#feedbackModal{{ entry.id }}">
+                                        <i class="bi bi-eye me-1"></i>View
+                                    </button>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('project.update_project_status', group_id=entry.group.id) }}"
+                                            class="btn btn-outline-primary">
+                                            <i class="bi bi-pencil me-1"></i>Edit
+                                        </a>
+                                        <button class="btn btn-outline-info" data-bs-toggle="modal"
+                                            data-bs-target="#projectDetailsModal{{ entry.group.id }}">
+                                            <i class="bi bi-info-circle me-1"></i>Details
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
                             {% else %}
-                                <tr>
-                                    <td colspan="6" class="text-center py-4">
-                                        <i class="bi bi-clock-history fs-1 text-muted mb-3 d-block"></i>
-                                        <p class="mb-0">No evaluation history found.</p>
-                                        <p class="text-muted">You haven't evaluated any projects yet.</p>
-                                    </td>
-                                </tr>
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <i class="bi bi-clock-history fs-1 text-muted mb-3 d-block"></i>
+                                    <p class="mb-0">No evaluation history found.</p>
+                                    <p class="text-muted">You haven't evaluated any projects yet.</p>
+                                </td>
+                            </tr>
                             {% endif %}
                         </tbody>
                     </table>
                 </div>
-                
+
                 {% if status_entries and status_entries|length > 0 %}
-                    <div class="card-footer bg-white">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">Showing {{ status_entries|length }} evaluations</small>
-                            <nav aria-label="Page navigation">
-                                <ul class="pagination pagination-sm mb-0">
-                                    <li class="page-item disabled">
-                                        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
-                                    </li>
-                                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                    <li class="page-item disabled">
-                                        <a class="page-link" href="#">Next</a>
-                                    </li>
-                                </ul>
-                            </nav>
-                        </div>
+                <div class="card-footer bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Showing {{ status_entries|length }} evaluations</small>
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                                </li>
+                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
                     </div>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -143,188 +154,191 @@
 
     <!-- Feedback Modals -->
     {% if status_entries %}
-        {% for entry in status_entries %}
-            <div class="modal fade" id="feedbackModal{{ entry.id }}" tabindex="-1" aria-labelledby="feedbackModalLabel{{ entry.id }}" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="feedbackModalLabel{{ entry.id }}">Feedback for {{ entry.group.group_id }}</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    {% for entry in status_entries %}
+    <div class="modal fade" id="feedbackModal{{ entry.id }}" tabindex="-1"
+        aria-labelledby="feedbackModalLabel{{ entry.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="feedbackModalLabel{{ entry.id }}">Feedback for {{ entry.group.group_id
+                        }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Group:</div>
+                        <div class="col-md-8">{{ entry.group.group_id }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Project:</div>
+                        <div class="col-md-8">{{ entry.group.project_title }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Evaluation Date:</div>
+                        <div class="col-md-8">{{ entry.updated_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Status:</div>
+                        <div class="col-md-8">
+                            {% if entry.status == 'Accepted' %}
+                            <span class="badge bg-success">Accepted</span>
+                            {% elif entry.status == 'Conditionally Accepted' %}
+                            <span class="badge bg-info">Conditionally Accepted</span>
+                            {% elif entry.status == 'Deferred' %}
+                            <span class="badge bg-danger">Deferred</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ entry.status }}</span>
+                            {% endif %}
                         </div>
-                        <div class="modal-body">
-                            <div class="row mb-3">
-                                <div class="col-md-4 fw-bold">Group:</div>
-                                <div class="col-md-8">{{ entry.group.group_id }}</div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-md-4 fw-bold">Project:</div>
-                                <div class="col-md-8">{{ entry.group.project_title }}</div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-md-4 fw-bold">Evaluation Date:</div>
-                                <div class="col-md-8">{{ entry.updated_at.strftime('%Y-%m-%d %H:%M') }}</div>
-                            </div>
-                            <div class="row mb-3">
-                                <div class="col-md-4 fw-bold">Status:</div>
-                                <div class="col-md-8">
-                                    {% if entry.status == 'Accepted' %}
-                                        <span class="badge bg-success">Accepted</span>
-                                    {% elif entry.status == 'Conditionally Accepted' %}
-                                        <span class="badge bg-info">Conditionally Accepted</span>
-                                    {% elif entry.status == 'Deferred' %}
-                                        <span class="badge bg-danger">Deferred</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">{{ entry.status }}</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            <div class="row mb-4">
-                                <div class="col-12 fw-bold mb-2">Detailed Feedback (For Supervisors):</div>
-                                <div class="col-12">
-                                    <div class="p-3 bg-light rounded">
-                                        {{ entry.feedback|nl2br or 'No detailed feedback provided.' }}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-12 fw-bold mb-2">Student Feedback:</div>
-                                <div class="col-12">
-                                    <div class="p-3 bg-light rounded">
-                                        {{ entry.student_feedback|nl2br or 'No student feedback provided.' }}
-                                    </div>
-                                </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-12 fw-bold mb-2">Detailed Feedback (For Supervisors):</div>
+                        <div class="col-12">
+                            <div class="p-3 bg-light rounded">
+                                {{ entry.feedback|nl2br or 'No detailed feedback provided.' }}
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <a href="{{ url_for('project.update_project_status', group_id=entry.group.id) }}" class="btn btn-primary">
-                                <i class="bi bi-pencil me-1"></i>Edit Feedback
-                            </a>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12 fw-bold mb-2">Student Feedback:</div>
+                        <div class="col-12">
+                            <div class="p-3 bg-light rounded">
+                                {{ entry.student_feedback|nl2br or 'No student feedback provided.' }}
+                            </div>
                         </div>
                     </div>
                 </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a href="{{ url_for('project.update_project_status', group_id=entry.group.id) }}"
+                        class="btn btn-primary">
+                        <i class="bi bi-pencil me-1"></i>Edit Feedback
+                    </a>
+                </div>
             </div>
-            
-            <!-- Project Details Modal -->
-            <div class="modal fade" id="projectDetailsModal{{ entry.group.id }}" tabindex="-1" aria-labelledby="projectDetailsModalLabel{{ entry.group.id }}" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="projectDetailsModalLabel{{ entry.group.id }}">Project Details</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+    </div>
+
+    <!-- Project Details Modal -->
+    <div class="modal fade" id="projectDetailsModal{{ entry.group.id }}" tabindex="-1"
+        aria-labelledby="projectDetailsModalLabel{{ entry.group.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="projectDetailsModalLabel{{ entry.group.id }}">Project Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h4 class="mb-3">{{ entry.group.project_title }}</h4>
+                    <p class="badge bg-secondary mb-3">Group ID: {{ entry.group.group_id }}</p>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Supervisor:</div>
+                        <div class="col-md-8">
+                            {% if entry.group.supervisor %}
+                            {{ entry.group.supervisor.first_name }} {{ entry.group.supervisor.last_name }}
+                            {% else %}
+                            <span class="text-muted">Not assigned</span>
+                            {% endif %}
                         </div>
-                        <div class="modal-body">
-                            <h4 class="mb-3">{{ entry.group.project_title }}</h4>
-                            <p class="badge bg-secondary mb-3">Group ID: {{ entry.group.group_id }}</p>
-                            
-                            <div class="row mb-3">
-                                <div class="col-md-4 fw-bold">Supervisor:</div>
-                                <div class="col-md-8">
-                                    {% if entry.group.supervisor %}
-                                        {{ entry.group.supervisor.first_name }} {{ entry.group.supervisor.last_name }}
-                                    {% else %}
-                                        <span class="text-muted">Not assigned</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            {% if entry.group.details %}
-                                <div class="row mb-3">
-                                    <div class="col-md-4 fw-bold">Project Major:</div>
-                                    <div class="col-md-8">
-                                        <span class="badge 
+                    </div>
+
+                    {% if entry.group.details %}
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Project Major:</div>
+                        <div class="col-md-8">
+                            <span class="badge 
                                             {% if entry.group.details.major == 'AI/ML' %}bg-info
                                             {% elif entry.group.details.major == 'Cyber Security' %}bg-danger
                                             {% elif entry.group.details.major == 'Blockchain' %}bg-warning
                                             {% elif entry.group.details.major == 'Web Development' %}bg-success
                                             {% elif entry.group.details.major == 'Mobile App Development' %}bg-primary
                                             {% else %}bg-secondary{% endif %}">
-                                            {{ entry.group.details.major }}
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div class="row mb-3">
-                                    <div class="col-md-4 fw-bold">Project Progress:</div>
-                                    <div class="col-md-8">
-                                        <div class="progress">
-                                            <div class="progress-bar 
+                                {{ entry.group.details.major }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Project Progress:</div>
+                        <div class="col-md-8">
+                            <div class="progress">
+                                <div class="progress-bar 
                                                 {% if entry.group.details.progress < 30 %}bg-danger
                                                 {% elif entry.group.details.progress < 70 %}bg-warning
-                                                {% else %}bg-success{% endif %}" 
-                                                role="progressbar" 
-                                                style="width: {{ entry.group.details.progress }}%" 
-                                                aria-valuenow="{{ entry.group.details.progress }}" 
-                                                aria-valuemin="0" 
-                                                aria-valuemax="100">
-                                                {{ entry.group.details.progress }}%
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                {% if entry.group.details.description %}
-                                    <div class="row mb-4">
-                                        <div class="col-12 fw-bold mb-2">Project Description:</div>
-                                        <div class="col-12">
-                                            <div class="p-3 bg-light rounded">
-                                                {{ entry.group.details.description|nl2br }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                {% endif %}
-                            {% endif %}
-                            
-                            <!-- Group Members Section -->
-                            <div class="row mb-3">
-                                <div class="col-12 fw-bold mb-2">Group Members:</div>
-                                <div class="col-12">
-                                    <ul class="list-group">
-                                        {% for member in entry.group.members %}
-                                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <strong>{{ member.user.first_name }} {{ member.user.last_name }}</strong>
-                                                    <br>
-                                                    <small class="text-muted">{{ member.user.email }}</small>
-                                                </div>
-                                                <span class="badge bg-primary">{{ member.user.role }}</span>
-                                            </li>
-                                        {% else %}
-                                            <li class="list-group-item text-center text-muted">No members found</li>
-                                        {% endfor %}
-                                    </ul>
+                                                {% else %}bg-success{% endif %}" role="progressbar"
+                                    style="width: {{ entry.group.details.progress }}%"
+                                    aria-valuenow="{{ entry.group.details.progress }}" aria-valuemin="0"
+                                    aria-valuemax="100">
+                                    {{ entry.group.details.progress }}%
                                 </div>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <a href="{{ url_for('project.update_project_status', group_id=entry.group.id) }}" class="btn btn-primary">
-                                <i class="bi bi-clipboard-check me-1"></i>Update Status
-                            </a>
+                    </div>
+
+                    {% if entry.group.details.description %}
+                    <div class="row mb-4">
+                        <div class="col-12 fw-bold mb-2">Project Description:</div>
+                        <div class="col-12">
+                            <div class="p-3 bg-light rounded">
+                                {{ entry.group.details.description|nl2br }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+
+                    <!-- Group Members Section -->
+                    <div class="row mb-3">
+                        <div class="col-12 fw-bold mb-2">Group Members:</div>
+                        <div class="col-12">
+                            <ul class="list-group">
+                                {% for member in entry.group.members %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ member.user.first_name }} {{ member.user.last_name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ member.user.email }}</small>
+                                    </div>
+                                    <span class="badge bg-primary">{{ member.user.role }}</span>
+                                </li>
+                                {% else %}
+                                <li class="list-group-item text-center text-muted">No members found</li>
+                                {% endfor %}
+                            </ul>
                         </div>
                     </div>
                 </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a href="{{ url_for('project.update_project_status', group_id=entry.group.id) }}"
+                        class="btn btn-primary">
+                        <i class="bi bi-clipboard-check me-1"></i>Update Status
+                    </a>
+                </div>
             </div>
-        {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
     {% endif %}
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         // Toggle filter panel
         const filterToggle = document.getElementById('filterToggle');
         const filterPanel = document.getElementById('filterPanel');
-        
+
         if (filterToggle && filterPanel) {
             // Show panel if there are any filters applied
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('status') || urlParams.has('date_from') || urlParams.has('date_to') || urlParams.has('search')) {
                 filterPanel.style.display = 'block';
             }
-            
-            filterToggle.addEventListener('click', function() {
+
+            filterToggle.addEventListener('click', function () {
                 if (filterPanel.style.display === 'none') {
                     filterPanel.style.display = 'block';
                 } else {
@@ -334,4 +348,4 @@
         }
     });
 </script>
-{% endblock %} 
+{% endblock %}

@@ -1,241 +1,520 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="en">
 
-{% block title %}Student Dashboard{% endblock %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - FYP Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="{{ url_for('static', filename='css/modern-ui.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .navbar { position: relative; z-index: 1050; }
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+            color: white; padding: 2rem 1.5rem; margin: 0;
+            border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+            position: relative; z-index: 1000; overflow: visible;
+        }
+        .welcome-text { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .subtitle-text { opacity: 0.9; font-weight: 500; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .content-section { display: none; animation: fadeInUp 0.5s ease-out; }
+        .content-section.active { display: block; }
+        .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .quick-action-card {
+            background: white; border-radius: var(--radius-lg); padding: 1.5rem; text-align: center;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200);
+            transition: all 0.3s ease; cursor: pointer; text-decoration: none; color: var(--gray-800);
+        }
+        .quick-action-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary-300); color: var(--primary-700); }
+        .quick-action-card i { font-size: 2.5rem; color: var(--primary-600); margin-bottom: 1rem; }
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+            .quick-actions { grid-template-columns: 1fr; }
+            .sidebar { position: fixed; left: -100%; top: 0; z-index: 1000; transition: left 0.3s ease; }
+            .sidebar.show { left: 0; }
+            .main-content { margin-left: 0; }
+        }
+    </style>
+</head>
 
-{% block content %}
-<div class="container-fluid mt-4">
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <h2>Welcome, {{ current_user.first_name }}!</h2>
-                <a href="{{ url_for('student_schedule') }}" class="btn btn-primary">
-                    <i class="bi bi-calendar-week me-2"></i>View Full Schedule
-                </a>
+<body>
+    <!-- Modern Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-mortarboard me-2"></i>
+                <span>FYP Student</span>
+            </a>
+            <div class="d-flex ms-auto">
+                <div class="dropdown">
+                    <button class="btn btn-light btn-sm py-2 px-3" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <span>{{ current_user.first_name }}</span>
+                        <i class="bi bi-chevron-down ms-2"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('profile') }}">
+                            <i class="bi bi-person me-2"></i>Profile
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                            <i class="bi bi-box-arrow-right me-2"></i>Logout
+                        </a></li>
+                    </ul>
+                </div>
             </div>
-            <p class="text-muted">{{ today }}</p>
+        </div>
+    </nav>
+
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="welcome-text">Welcome back, {{ current_user.first_name }}! 👋</h1>
+                    <p class="subtitle-text">Track your FYP progress and schedule</p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Student Profile Information Card -->
-    {% if current_user.profile %}
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Profile Information</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Program:</strong> 
-                                {% if current_user.profile.program == 'CS' %}
-                                    Computer Science (CS)
-                                {% elif current_user.profile.program == 'IT' %}
-                                    Information Technology (IT)
-                                {% elif current_user.profile.program == 'AI' %}
-                                    Artificial Intelligence (AI)
-                                {% else %}
-                                    {{ current_user.profile.program }}
-                                {% endif %}
-                            </p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Semester:</strong> 
-                                {% if current_user.profile.semester %}
-                                    {{ current_user.profile.semester }}{% if current_user.profile.semester == 1 %}st{% elif current_user.profile.semester == 2 %}nd{% elif current_user.profile.semester == 3 %}rd{% else %}th{% endif %} Semester
-                                {% else %}
-                                    Not specified
-                                {% endif %}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <div class="row">
-        <!-- Left Column - Class Schedule and Project Info -->
-        <div class="col-md-8">
-            <!-- Today's Classes Card -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Today's Classes</h5>
-                </div>
-                <div class="card-body">
-                    {% if today_schedules %}
-                        <div class="list-group">
-                            {% for schedule in today_schedules %}
-                                <div class="list-group-item">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h5 class="mb-1">{{ schedule.subject }}</h5>
-                                        <small class="text-primary">{{ schedule.time }}</small>
-                                    </div>
-                                    <p class="mb-1">Room: {{ schedule.room }}</p>
-                                    <small class="text-muted">Teacher: {{ schedule.teacher }}</small>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle me-2"></i>No classes scheduled for today.
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Tomorrow's Classes Card -->
-            <div class="card mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0"><i class="bi bi-calendar-plus me-2"></i>Tomorrow's Classes</h5>
-                </div>
-                <div class="card-body">
-                    {% if tomorrow_schedules %}
-                        <div class="list-group">
-                            {% for schedule in tomorrow_schedules %}
-                                <div class="list-group-item">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h5 class="mb-1">{{ schedule.subject }}</h5>
-                                        <small class="text-success">{{ schedule.time }}</small>
-                                    </div>
-                                    <p class="mb-1">Room: {{ schedule.room }}</p>
-                                    <small class="text-muted">Teacher: {{ schedule.teacher }}</small>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle me-2"></i>No classes scheduled for tomorrow.
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- FYP Project Info -->
-            {% if student_group %}
-                <div class="card mb-4">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="bi bi-kanban me-2"></i>My FYP Project</h5>
-                    </div>
-                    <div class="card-body">
-                        <h4>{{ student_group.project_title }}</h4>
-                        <p>Group ID: <span class="badge bg-primary">{{ student_group.group_id }}</span></p>
-                        
-                        {% if supervisor %}
-                            <p class="mb-0">Supervisor: {{ supervisor.first_name }} {{ supervisor.last_name }}</p>
-                            <p class="text-muted">{{ supervisor.email }}</p>
-                        {% else %}
-                            <p class="text-muted">No supervisor assigned yet.</p>
-                        {% endif %}
-                        
-                        <div class="mt-3">
-                            <h6>Project Progress</h6>
-                            <div class="progress">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ project_progress }}%" aria-valuenow="{{ project_progress }}" aria-valuemin="0" aria-valuemax="100">{{ project_progress }}%</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {% else %}
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-triangle me-2"></i>You are not assigned to any project group yet.
-                </div>
-            {% endif %}
-        </div>
-
-        <!-- Right Column - Milestones, Remarks, and Resources -->
-        <div class="col-md-4">
-            <!-- Upcoming Milestones Card -->
-            <div class="card mb-4">
-                <div class="card-header bg-warning">
-                    <h5 class="mb-0"><i class="bi bi-flag me-2"></i>Upcoming Milestones</h5>
-                </div>
-                <div class="card-body p-0">
-                    <ul class="list-group list-group-flush">
-                        {% for milestone in upcoming_milestones %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <p class="mb-0 fw-bold">{{ milestone.title }}</p>
-                                    <small class="text-muted">Due: {{ milestone.due_date }}</small>
-                                </div>
-                                <span class="badge {% if milestone.days_left <= 7 %}bg-danger{% else %}bg-primary{% endif %} rounded-pill">{{ milestone.days_left }} days</span>
-                            </li>
-                        {% endfor %}
+    <div class="container-fluid">
+        <div class="row g-0">
+            <!-- Modern Sidebar -->
+            <div class="col-lg-2 p-0 sidebar">
+                <div class="d-flex flex-column flex-shrink-0 p-3">
+                    <ul class="nav nav-pills flex-column gap-2">
+                        <li class="nav-item">
+                            <a href="#dashboard" class="nav-link active section-link" data-section="dashboard">
+                                <i class="bi bi-grid me-3"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#schedule" class="nav-link section-link" data-section="schedule">
+                                <i class="bi bi-calendar-week me-3"></i>Schedule
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#my-project" class="nav-link section-link" data-section="my-project">
+                                <i class="bi bi-kanban me-3"></i>My Project
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#milestones" class="nav-link section-link" data-section="milestones">
+                                <i class="bi bi-flag me-3"></i>Milestones
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#feedback" class="nav-link section-link" data-section="feedback">
+                                <i class="bi bi-chat-left-text me-3"></i>Supervisor Remarks
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#resources" class="nav-link section-link" data-section="resources">
+                                <i class="bi bi-journal-text me-3"></i>Resources
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
 
-            <!-- Recent Remarks Card -->
-            <div class="card mb-4">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0"><i class="bi bi-chat-left-text me-2"></i>Recent Feedback</h5>
-                </div>
-                <div class="card-body p-0">
-                    {% if remarks %}
-                        <ul class="list-group list-group-flush">
-                            {% for remark in remarks[:3] %}
-                                <li class="list-group-item">
-                                    <p class="mb-1">{{ remark.content }}</p>
-                                    <div class="d-flex justify-content-between">
-                                        <small class="text-muted">{{ remark.teacher.first_name }} {{ remark.teacher.last_name }}</small>
-                                        <small class="text-muted">{{ remark.timestamp.strftime('%Y-%m-%d') }}</small>
-                                    </div>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                        {% if remarks|length > 3 %}
-                            <div class="card-footer bg-light text-center">
-                                <a href="javascript:void(0);" class="text-decoration-none" onclick="alert('No feedback available yet.');">View all feedback</a>
-                            </div>
-                        {% endif %}
-                    {% else %}
-                        <div class="p-3 text-center text-muted">
-                            <i class="bi bi-chat-square-text" style="font-size: 2rem;"></i>
-                            <p class="mt-2">No feedback received yet.</p>
+            <!-- Main Content Area -->
+            <div class="col-lg-10 main-content p-4">
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <i class="bi {% if category == 'success' %}bi-check-circle{% elif category == 'danger' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <!-- Dashboard Section -->
+                <div id="dashboard" class="content-section active">
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card primary">
+                            <i class="bi bi-percent"></i>
+                            <div class="stat-value">{{ project_progress }}%</div>
+                            <div class="stat-label">Project Progress</div>
+                        </div>
+                        <div class="stat-card success">
+                            <i class="bi bi-calendar-day"></i>
+                            <div class="stat-value">{{ today_schedules|length }}</div>
+                            <div class="stat-label">Today's Classes</div>
+                        </div>
+                        <div class="stat-card warning">
+                            <i class="bi bi-flag"></i>
+                            <div class="stat-value">{{ upcoming_milestones|length }}</div>
+                            <div class="stat-label">Upcoming Milestones</div>
+                        </div>
+                        <div class="stat-card danger">
+                            <i class="bi bi-chat-left-text"></i>
+                            <div class="stat-value">{{ remarks|length }}</div>
+                            <div class="stat-label">Remarks Received</div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <a href="#" class="quick-action-card section-link" data-section="schedule">
+                            <i class="bi bi-calendar-week"></i>
+                            <h5>Schedule</h5>
+                            <p>View today's classes</p>
+                        </a>
+                        <a href="#" class="quick-action-card section-link" data-section="my-project">
+                            <i class="bi bi-kanban"></i>
+                            <h5>My Project</h5>
+                            <p>View FYP details</p>
+                        </a>
+                        <a href="#" class="quick-action-card section-link" data-section="milestones">
+                            <i class="bi bi-flag"></i>
+                            <h5>Milestones</h5>
+                            <p>Track deadlines</p>
+                        </a>
+                        <a href="#" class="quick-action-card section-link" data-section="feedback">
+                            <i class="bi bi-chat-quote"></i>
+                            <h5>Supervisor Remarks</h5>
+                            <p>View supervisor remarks</p>
+                        </a>
+                    </div>
+
+                    <!-- Profile Info Card -->
+                    {% if current_user.profile %}
+                    <div class="card mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Profile Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Program:</strong> 
+                                        {% if current_user.profile.program == 'CS' %}
+                                            Computer Science (CS)
+                                        {% elif current_user.profile.program == 'IT' %}
+                                            Information Technology (IT)
+                                        {% elif current_user.profile.program == 'AI' %}
+                                            Artificial Intelligence (AI)
+                                        {% else %}
+                                            {{ current_user.profile.program }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Semester:</strong> 
+                                        {% if current_user.profile.semester %}
+                                            {{ current_user.profile.semester }}{% if current_user.profile.semester == 1 %}st{% elif current_user.profile.semester == 2 %}nd{% elif current_user.profile.semester == 3 %}rd{% else %}th{% endif %} Semester
+                                        {% else %}
+                                            Not specified
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     {% endif %}
                 </div>
-            </div>
 
-            <!-- Resources Card -->
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Resources</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-file-earmark-pdf text-danger me-3" style="font-size: 1.5rem;"></i>
-                                <div>
-                                    <h6 class="mb-0">FYP Guidelines</h6>
-                                    <small class="text-muted">PDF Document</small>
+                <!-- Schedule Section -->
+                <div id="schedule" class="content-section">
+                    <h2 class="mb-4">Class Schedule</h2>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-white">
+                                    <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Today's Classes <span class="badge bg-primary ms-2">{{ today }}</span></h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if today_schedules %}
+                                        <div class="list-group list-group-flush">
+                                            {% for schedule in today_schedules %}
+                                                <div class="list-group-item px-0">
+                                                    <div class="d-flex w-100 justify-content-between">
+                                                        <h6 class="mb-1">{{ schedule.subject }}</h6>
+                                                        <small class="text-primary fw-bold">{{ schedule.time }}</small>
+                                                    </div>
+                                                    <p class="mb-1"><i class="bi bi-geo-alt me-1"></i>Room: {{ schedule.room }}</p>
+                                                    <small class="text-muted"><i class="bi bi-person me-1"></i>{{ schedule.teacher }}</small>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <div class="alert alert-info mb-0">
+                                            <i class="bi bi-info-circle me-2"></i>No classes scheduled for today.
+                                        </div>
+                                    {% endif %}
                                 </div>
                             </div>
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-file-earmark-text text-primary me-3" style="font-size: 1.5rem;"></i>
-                                <div>
-                                    <h6 class="mb-0">Document Templates</h6>
-                                    <small class="text-muted">Word Documents</small>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-white">
+                                    <h5 class="mb-0"><i class="bi bi-calendar-plus me-2"></i>Tomorrow's Classes <span class="badge bg-success ms-2">{{ tomorrow }}</span></h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if tomorrow_schedules %}
+                                        <div class="list-group list-group-flush">
+                                            {% for schedule in tomorrow_schedules %}
+                                                <div class="list-group-item px-0">
+                                                    <div class="d-flex w-100 justify-content-between">
+                                                        <h6 class="mb-1">{{ schedule.subject }}</h6>
+                                                        <small class="text-success fw-bold">{{ schedule.time }}</small>
+                                                    </div>
+                                                    <p class="mb-1"><i class="bi bi-geo-alt me-1"></i>Room: {{ schedule.room }}</p>
+                                                    <small class="text-muted"><i class="bi bi-person me-1"></i>{{ schedule.teacher }}</small>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <div class="alert alert-info mb-0">
+                                            <i class="bi bi-info-circle me-2"></i>No classes scheduled for tomorrow.
+                                        </div>
+                                    {% endif %}
                                 </div>
                             </div>
-                        </a>
-                        <a href="#" class="list-group-item list-group-item-action">
-                            <div class="d-flex align-items-center">
-                                <i class="bi bi-calendar-event text-success me-3" style="font-size: 1.5rem;"></i>
-                                <div>
-                                    <h6 class="mb-0">Academic Calendar</h6>
-                                    <small class="text-muted">Important Dates</small>
-                                </div>
-                            </div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <a href="{{ url_for('student_schedule') }}" class="btn btn-primary">
+                            <i class="bi bi-calendar-week me-2"></i>View Full Schedule
                         </a>
                     </div>
                 </div>
+
+                <!-- My Project Section -->
+                <div id="my-project" class="content-section">
+                    <h2 class="mb-4">My FYP Project</h2>
+                    {% if student_group %}
+                        <div class="card mb-4">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0"><i class="bi bi-kanban me-2"></i>{{ student_group.project_title }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <p><strong>Group ID:</strong> <span class="badge bg-primary">{{ student_group.group_id }}</span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        {% if supervisor %}
+                                            <p><strong>Supervisor:</strong> {{ supervisor.first_name }} {{ supervisor.last_name }}</p>
+                                            <p class="text-muted">{{ supervisor.email }}</p>
+                                        {% else %}
+                                            <p class="text-muted">No supervisor assigned yet.</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <h6>Project Progress</h6>
+                                <div class="progress mb-2" style="height: 20px;">
+                                    <div class="progress-bar {% if project_progress >= 75 %}bg-success{% elif project_progress >= 40 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar" style="width: {{ project_progress }}%" aria-valuenow="{{ project_progress }}" aria-valuemin="0" aria-valuemax="100">{{ project_progress }}%</div>
+                                </div>
+                                <small class="text-muted">{{ project_progress }}% complete — set by your supervisor</small>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>You are not assigned to any project group yet.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Milestones Section -->
+                <div id="milestones" class="content-section">
+                    <h2 class="mb-4">Project Milestones</h2>
+                    {% if upcoming_milestones|length > 0 %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="badge bg-primary fs-6 me-2">{{ upcoming_milestones|length }}</span>
+                            <span class="text-muted">Total Milestones</span>
+                        </div>
+                        <div>
+                            {% set completed_count = upcoming_milestones|selectattr('completed')|list|length %}
+                            <span class="badge bg-success me-1">{{ completed_count }} Completed</span>
+                            <span class="badge bg-warning text-dark">{{ upcoming_milestones|length - completed_count }} Remaining</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <ul class="list-group list-group-flush">
+                                {% for milestone in upcoming_milestones %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                                        <div>
+                                            <h6 class="mb-0 {% if milestone.completed %}text-decoration-line-through text-muted{% endif %}">
+                                                {% if milestone.completed %}
+                                                <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                                {% elif milestone.status == 'Late' %}
+                                                <i class="bi bi-exclamation-circle-fill text-danger me-1"></i>
+                                                {% else %}
+                                                <i class="bi bi-clock text-warning me-1"></i>
+                                                {% endif %}
+                                                {{ milestone.title }}
+                                            </h6>
+                                            {% if milestone.description %}
+                                            <small class="text-muted">{{ milestone.description }}</small><br>
+                                            {% endif %}
+                                            <small class="text-muted">Due: {{ milestone.due_date }}</small>
+                                        </div>
+                                        {% if milestone.completed %}
+                                            <span class="badge bg-success rounded-pill fs-6"><i class="bi bi-check-lg me-1"></i>Done</span>
+                                        {% elif milestone.status == 'Late' %}
+                                            <span class="badge bg-danger rounded-pill fs-6">Overdue</span>
+                                        {% elif milestone.days_left <= 0 %}
+                                            <span class="badge bg-danger rounded-pill fs-6">Overdue</span>
+                                        {% elif milestone.days_left <= 7 %}
+                                            <span class="badge bg-danger rounded-pill fs-6">{{ milestone.days_left }} days left</span>
+                                        {% elif milestone.days_left <= 14 %}
+                                            <span class="badge bg-warning text-dark rounded-pill fs-6">{{ milestone.days_left }} days left</span>
+                                        {% else %}
+                                            <span class="badge bg-primary rounded-pill fs-6">{{ milestone.days_left }} days left</span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-flag" style="font-size: 3rem;"></i>
+                        <p class="mt-3">No milestones set yet.</p>
+                        <p class="small">Your supervisor will add milestones for your project.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Feedback Section -->
+                <div id="feedback" class="content-section">
+                    <h2 class="mb-4">Supervisor Remarks</h2>
+
+                    {% if remarks %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <span class="badge bg-primary fs-6 me-2">{{ remarks|length }}</span>
+                                <span class="text-muted">Total Remarks Received</span>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <ul class="list-group list-group-flush">
+                                    {% for remark in remarks %}
+                                        <li class="list-group-item py-3">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    {% if remark.student_id %}
+                                                    <span class="badge bg-warning text-dark me-2"><i class="bi bi-person-fill me-1"></i>Sent to You</span>
+                                                    {% else %}
+                                                    <span class="badge bg-info me-2"><i class="bi bi-people-fill me-1"></i>Sent to Group</span>
+                                                    {% endif %}
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-person me-1"></i>{{ remark.teacher.first_name }} {{ remark.teacher.last_name }}
+                                                    </small>
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-clock me-1"></i>{{ remark.timestamp.strftime('%b %d, %Y at %H:%M') }}
+                                                </small>
+                                            </div>
+                                            <div class="p-3 bg-light rounded">
+                                                <p class="mb-0">{{ remark.content }}</p>
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-chat-square-text" style="font-size: 3rem;"></i>
+                            <p class="mt-3">No remarks received yet.</p>
+                            <p class="small">Your supervisor's remarks will appear here.</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Resources Section -->
+                <div id="resources" class="content-section">
+                    <h2 class="mb-4">Resources</h2>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">FYP Guidelines</h5>
+                                    <p class="text-muted">PDF Document</p>
+                                    <a href="#" class="btn btn-outline-primary btn-sm">Download</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-file-earmark-text text-primary" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">Document Templates</h5>
+                                    <p class="text-muted">Word Documents</p>
+                                    <a href="#" class="btn btn-outline-primary btn-sm">Download</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-calendar-event text-success" style="font-size: 3rem;"></i>
+                                    <h5 class="mt-3">Academic Calendar</h5>
+                                    <p class="text-muted">Important Dates</p>
+                                    <a href="#" class="btn btn-outline-primary btn-sm">View</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
-</div>
-{% endblock %} 
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Section navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            const sectionLinks = document.querySelectorAll('.section-link');
+            
+            sectionLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetSection = this.getAttribute('data-section');
+                    
+                    // Hide all sections
+                    document.querySelectorAll('.content-section').forEach(section => {
+                        section.classList.remove('active');
+                    });
+                    
+                    // Show target section
+                    const target = document.getElementById(targetSection);
+                    if (target) {
+                        target.classList.add('active');
+                    }
+                    
+                    // Update sidebar active state
+                    document.querySelectorAll('.sidebar .nav-link').forEach(navLink => {
+                        navLink.classList.remove('active');
+                    });
+                    
+                    // Find and activate the sidebar link
+                    const sidebarLink = document.querySelector('.sidebar .nav-link[data-section="' + targetSection + '"]');
+                    if (sidebarLink) {
+                        sidebarLink.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

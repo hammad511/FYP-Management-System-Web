@@ -12,33 +12,43 @@
                 </div>
                 <div class="card-body">
                     <form id="projectGroupForm" action="{{ url_for('add_project_and_group') }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row">
                             <!-- Group Project Information -->
                             <div class="col-md-6">
                                 <h5 class="border-bottom pb-2 mb-3">Group Project Details</h5>
                                 <div class="mb-3">
-                                    <label for="group_id" class="form-label">Group ID <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="group_id" name="group_id" required placeholder="e.g. G42">
+                                    <label for="group_id" class="form-label">Group ID <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="group_id" name="group_id" required
+                                        placeholder="e.g. G42">
                                     <small class="text-muted">Unique identifier for the group project</small>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="project_title" class="form-label">Project Title <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="project_title" name="project_title" required placeholder="e.g. AI-based Traffic Management System">
+                                    <label for="project_title" class="form-label">Project Title <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="project_title" name="project_title"
+                                        required placeholder="e.g. AI-based Traffic Management System">
                                     <small class="text-muted">Name of the group project</small>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="supervisor_id" class="form-label">Supervisor <span class="text-danger">*</span></label>
+                                    <label for="supervisor_id" class="form-label">Supervisor <span
+                                            class="text-danger">*</span></label>
                                     <select class="form-select" id="supervisor_id" name="supervisor_id" required>
                                         <option value="">Select a Supervisor</option>
                                         {% for supervisor in supervisors %}
-                                        <option value="{{ supervisor.id }}">{{ supervisor.first_name }} {{ supervisor.last_name }}</option>
+                                        <option value="{{ supervisor.id }}">{{ supervisor.first_name }} {{
+                                            supervisor.last_name }}</option>
                                         {% endfor %}
                                     </select>
-                                    <small class="text-muted">Select the faculty member or supervisor overseeing this project</small>
+                                    <small class="text-muted">Select the faculty member or supervisor overseeing this
+                                        project</small>
                                 </div>
                                 <div class="mb-3">
                                     <label for="project_description" class="form-label">Project Description</label>
-                                    <textarea class="form-control" id="project_description" name="project_description" rows="4" placeholder="Describe the project objectives, scope, and technologies..."></textarea>
+                                    <textarea class="form-control" id="project_description" name="project_description"
+                                        rows="4"
+                                        placeholder="Describe the project objectives, scope, and technologies..."></textarea>
                                 </div>
                                 <div class="mb-3">
                                     <label for="project_major" class="form-label">Project Major</label>
@@ -52,21 +62,22 @@
                                     </select>
                                 </div>
                             </div>
-                            
+
                             <!-- Group Members -->
                             <div class="col-md-6">
                                 <h5 class="border-bottom pb-2 mb-3">Group Members</h5>
                                 <div class="alert alert-info">
                                     <i class="bi bi-info-circle me-2"></i> Select students to add to this group project.
                                 </div>
-                                
+
                                 <div class="mb-3">
                                     <label class="form-label">Available Students for Group</label>
                                     <div class="list-group" id="availableStudents">
                                         <!-- Student 1 -->
                                         <div class="list-group-item">
                                             <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="selected_students" value="1" id="student1">
+                                                <input class="form-check-input" type="checkbox" name="selected_students"
+                                                    value="1" id="student1">
                                                 <label class="form-check-label" for="student1">
                                                     <div><strong>Sheran Shah</strong></div>
                                                     <small class="text-muted">sheran.shah@example.com</small>
@@ -74,11 +85,12 @@
                                                 </label>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Student 2 (Example) -->
                                         <div class="list-group-item">
                                             <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="selected_students" value="2" id="student2">
+                                                <input class="form-check-input" type="checkbox" name="selected_students"
+                                                    value="2" id="student2">
                                                 <label class="form-check-label" for="student2">
                                                     <div><strong>Ahmed Khan</strong></div>
                                                     <small class="text-muted">ahmed.khan@example.com</small>
@@ -86,11 +98,12 @@
                                                 </label>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Student 3 (Example) -->
                                         <div class="list-group-item">
                                             <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="selected_students" value="3" id="student3">
+                                                <input class="form-check-input" type="checkbox" name="selected_students"
+                                                    value="3" id="student3">
                                                 <label class="form-check-label" for="student3">
                                                     <div><strong>Sarah Johnson</strong></div>
                                                     <small class="text-muted">sarah.johnson@example.com</small>
@@ -100,21 +113,25 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="mb-3">
-                                    <label for="selectedStudentsCount" class="form-label">Selected Students: <span id="studentCount">0</span>/2</label>
+                                    <label for="selectedStudentsCount" class="form-label">Selected Students: <span
+                                            id="studentCount">0</span>/2</label>
                                     <div class="progress">
-                                        <div id="studentProgress" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                        <div id="studentProgress" class="progress-bar" role="progressbar"
+                                            style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Submit Section -->
                         <div class="row mt-4">
                             <div class="col-12">
                                 <div class="d-flex justify-content-between">
-                                    <button type="button" class="btn btn-secondary" onclick="window.history.back();">Cancel</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        onclick="window.history.back();">Cancel</button>
                                     <button type="submit" class="btn btn-primary">
                                         <i class="bi bi-save me-2"></i>Create Group Project
                                     </button>
@@ -129,25 +146,25 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         // Handle student selection
         const checkboxes = document.querySelectorAll('input[name="selected_students"]');
         const studentCount = document.getElementById('studentCount');
         const studentProgress = document.getElementById('studentProgress');
-        
+
         checkboxes.forEach(checkbox => {
             checkbox.addEventListener('change', updateSelectedCount);
         });
-        
+
         function updateSelectedCount() {
             const selectedCount = document.querySelectorAll('input[name="selected_students"]:checked').length;
             studentCount.textContent = selectedCount;
-            
+
             // Update progress bar
             const progressPercent = (selectedCount / 2) * 100;
             studentProgress.style.width = progressPercent + '%';
             studentProgress.setAttribute('aria-valuenow', progressPercent);
-            
+
             // Change progress bar color based on count
             if (selectedCount > 2) {
                 studentProgress.classList.remove('bg-success', 'bg-primary');
@@ -164,26 +181,26 @@
                 studentProgress.classList.add('bg-primary');
             }
         }
-        
+
         // Form validation
         const form = document.getElementById('projectGroupForm');
-        form.addEventListener('submit', function(event) {
+        form.addEventListener('submit', function (event) {
             const selectedCount = document.querySelectorAll('input[name="selected_students"]:checked').length;
-            
+
             if (selectedCount === 0) {
                 event.preventDefault();
                 alert('Please select at least one student for the group.');
                 return false;
             }
-            
+
             if (selectedCount > 2) {
                 event.preventDefault();
                 alert('You can select a maximum of 2 students.');
                 return false;
             }
-            
+
             return true;
         });
     });
 </script>
-{% endblock %} 
+{% endblock %}

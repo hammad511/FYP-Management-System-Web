@@ -83,7 +83,7 @@
                                             {% endif %}
                                         </td>
                                         <td>{{ attempt.ip_address }}</td>
-                                        <td><small>{{ attempt.user_agent[:50] }}...</small></td>
+                                        <td><small>{{ attempt.user_agent[:50] ~ '...' if attempt.user_agent else 'Unknown' }}</small></td>
                                     </tr>
                                     {% endfor %}
                                 {% else %}

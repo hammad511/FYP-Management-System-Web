@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from functools import wraps
@@ -21,11 +22,31 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.urandom(24)
+# Read from environment in production; allow a dev-only fallback for local runs.
+_secret_key = os.environ.get('SECRET_KEY')
+_is_dev = app.debug or os.environ.get('FLASK_ENV') == 'development'
+if _secret_key:
+    app.config['SECRET_KEY'] = _secret_key
+elif _is_dev:
+    app.config['SECRET_KEY'] = 'dev-secret-key-change-this-in-prod-982374923'
+else:
+    raise RuntimeError("SECRET_KEY must be set in production")
+
+# Initialize CSRF protection
+app.config['WTF_CSRF_TIME_LIMIT'] = 86400  # 24 hours
+csrf = CSRFProtect(app)
 # To switch to MySQL or PostgreSQL, change the following line:
 # For MySQL: app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://username:password@localhost/dbname'
 # For PostgreSQL: app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://username:password@localhost/dbname'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fyp.db'
+# Database configuration
+if os.environ.get('VERCEL'):
+    # Vercel file system is read-only, except for /tmp
+    # NOTE: Data in /tmp is ephemeral and will be lost!
+    # You should use a remote database (Postgres/MySQL/MongoDB) for production.
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/fyp.db'
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fyp.db'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Database connection pool and performance settings
@@ -39,8 +60,8 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 }
 
 # Security configuration for session cookies
-# In production (HTTPS), this should be True. For localhost (HTTP), it MUST be False.
-app.config['SESSION_COOKIE_SECURE'] = False
+# Secure cookies in production (HTTPS), allow HTTP for local dev.
+app.config['SESSION_COOKIE_SECURE'] = not _is_dev
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
@@ -50,17 +71,22 @@ if app.debug or os.environ.get('FLASK_ENV') == 'development':
     print("[INFO] OAuth insecure transport enabled for local development")
 
 # Email configuration
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = 'alitariqw@gmail.com'
-app.config['MAIL_PASSWORD'] = 'pflk alwz kwyo fpnu'  # App Password for Gmail
-app.config['MAIL_DEFAULT_SENDER'] = 'alitariqw@gmail.com'
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', '587'))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
+app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'false').lower() == 'true'
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get(
+    'MAIL_DEFAULT_SENDER',
+    app.config['MAIL_USERNAME'] or 'no-reply@example.com'
+)
 app.config['MAIL_MAX_EMAILS'] = None
 app.config['MAIL_ASCII_ATTACHMENTS'] = False
-app.config['MAIL_SUPPRESS_SEND'] = False
-app.config['MAIL_DEBUG'] = True  # Enable debug mode for email
+app.config['MAIL_SUPPRESS_SEND'] = not (
+    app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD']
+)
+app.config['MAIL_DEBUG'] = app.debug
 
 # OAuth Configuration
 # Load from environment variables (.env file or system environment)
@@ -75,7 +101,10 @@ OAUTH_CONFIGURED = (app.config['GOOGLE_CLIENT_ID'] != 'not-configured' and
 # Initialize extensions
 db = SQLAlchemy(app)
 mail = Mail(app)
-oauth = OAuth(app)
+if OAuth:
+    oauth = OAuth(app)
+else:
+    oauth = None
 
 # Create a directory for storing email files
 EMAIL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'emails')
@@ -155,7 +184,7 @@ def send_email(to_email, subject, body, from_email=None):
         return False, error_msg
 
 # Test mail connection on startup if in debug mode
-if app.debug:
+if app.debug and not os.environ.get('VERCEL'):
     with app.app_context():
         try:
             mail.connect()
@@ -344,7 +373,9 @@ class Remark(db.Model):
     timestamp = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
     teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey('student_group.id'), nullable=False)
-    teacher = db.relationship('User', backref='remarks')
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # NULL = whole group, set = specific student
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref='remarks')
+    student = db.relationship('User', foreign_keys=[student_id], backref='targeted_remarks')
 
 class TeacherUsername(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -562,6 +593,11 @@ def verify_data_integrity():
     
     return issues
 
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    flash('Your session expired. Please try again.', 'warning')
+    return redirect(request.referrer or url_for('dashboard'))
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -569,30 +605,13 @@ def load_user(user_id):
 @app.route('/')
 def index():
     if current_user.is_authenticated:
-        # Redirect based on user role if authenticated
-        if current_user.role == 'admin':
-            return redirect(url_for('dashboard_admin'))
-        elif current_user.role == 'student':
-            return redirect(url_for('dashboard_student'))
-        elif current_user.role in ('teacher', 'faculty'):
-            return redirect(url_for('dashboard_faculty'))
-        elif current_user.role == 'supervisor':
-            return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        # Redirect based on user role if already authenticated
-        if current_user.role == 'admin':
-            return redirect(url_for('dashboard_admin'))
-        elif current_user.role == 'student':
-            return redirect(url_for('dashboard_student'))
-        elif current_user.role in ('faculty', 'teacher'):
-            return redirect(url_for('dashboard_faculty'))
-        elif current_user.role == 'supervisor':
-            return redirect(url_for('dashboard_supervisor'))
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
         email = request.form.get('email')
@@ -624,7 +643,7 @@ def login():
                 db.session.commit()
                 
                 flash(f'Invalid role selected. You are registered as a {user.role}.', 'danger')
-                return render_template('login.html')
+                return render_template('login_simple.html')
             
             # Log successful login
             login_attempt = LoginAttempt(
@@ -640,16 +659,8 @@ def login():
             login_user(user, remember=remember)
             next_page = request.args.get('next')
             
-            # Redirect user based on their role
-            if user.role == 'admin':
-                return redirect(next_page or url_for('dashboard_admin'))
-            elif user.role == 'student':
-                return redirect(next_page or url_for('dashboard_student'))
-            elif user.role in ('faculty', 'teacher'):
-                return redirect(next_page or url_for('dashboard_faculty'))
-            elif user.role == 'supervisor':
-                return redirect(next_page or url_for('dashboard_supervisor'))
-            return redirect(next_page or url_for('index'))
+            # Redirect user to their role-based dashboard
+            return redirect(next_page or url_for('dashboard'))
         else:
             # Log failed login attempt
             login_attempt = LoginAttempt(
@@ -664,7 +675,13 @@ def login():
             
             flash('Invalid email or password', 'danger')
     
-    return render_template('login.html')
+    return render_template('login_simple.html')
+
+@app.route('/login/modern')
+def login_modern():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return render_template('login_modern.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -798,7 +815,7 @@ def role_required(role):
 def delete_user(user_id):
     if current_user.role != 'admin':
         flash('You do not have permission to delete users.', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     user = User.query.get_or_404(user_id)
     
@@ -806,7 +823,7 @@ def delete_user(user_id):
     db.session.commit()
     
     flash(f'User {user.email} has been deleted.', 'success')
-    return redirect(url_for('dashboard_admin'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/dashboard_faculty')
 @login_required
@@ -815,7 +832,7 @@ def dashboard_faculty():
     allowed_roles = {"faculty", "teacher"}
     if current_user.role not in allowed_roles:
         flash("Access denied.")
-        return redirect(url_for('dashboard_admin') if current_user.role == 'admin' else url_for('login'))
+        return redirect(url_for('dashboard'))
     
     # Get all groups supervised by the current user
     supervised_groups = StudentGroup.query.filter_by(supervisor_id=current_user.id).all()
@@ -898,30 +915,36 @@ def dashboard_faculty():
     today_schedules.sort(key=lambda x: x['start_time'])
     tomorrow_schedules.sort(key=lambda x: x['start_time'])
     
-    # Get upcoming project milestones (simulated data for demo)
-    upcoming_milestones = [
-        {
-            'title': 'Requirements Document Submission',
-            'due_date': (datetime.datetime.now() + datetime.timedelta(days=5)).strftime('%Y-%m-%d'),
-            'days_left': 5,
-            'completed': False
-        },
-        {
-            'title': 'Prototype Presentation',
-            'due_date': (datetime.datetime.now() + datetime.timedelta(days=15)).strftime('%Y-%m-%d'),
-            'days_left': 15,
-            'completed': False
-        },
-        {
-            'title': 'Progress Report',
-            'due_date': (datetime.datetime.now() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'),
-            'days_left': 30,
-            'completed': False
-        }
-    ]
+    # Get upcoming project milestones from DB for all supervised groups
+    supervised_group_ids = [g.id for g in supervised_groups]
+    all_milestones = ProjectMilestone.query.filter(
+        ProjectMilestone.group_id.in_(supervised_group_ids)
+    ).order_by(ProjectMilestone.due_date.asc()).all() if supervised_group_ids else []
     
-    # Calculate project progress (simulated for demo)
-    project_progress = 35  # Percentage
+    # Get vivas for supervised groups
+    all_vivas = Viva.query.filter(
+        Viva.group_id.in_(supervised_group_ids)
+    ).order_by(Viva.scheduled_date.asc()).all() if supervised_group_ids else []
+    
+    # Get project statuses for supervised groups
+    all_project_statuses = {ps.group_id: ps for ps in ProjectStatus.query.filter(
+        ProjectStatus.group_id.in_(supervised_group_ids)
+    ).all()} if supervised_group_ids else {}
+    
+    # Get project details (progress) for supervised groups
+    all_project_details = {pd.group_id: pd for pd in ProjectDetails.query.filter(
+        ProjectDetails.group_id.in_(supervised_group_ids)
+    ).all()} if supervised_group_ids else {}
+    
+    # Calculate overall project progress from real data
+    if all_project_details:
+        total_progress = sum(pd.progress for pd in all_project_details.values() if pd.progress)
+        project_progress = total_progress // len(all_project_details) if all_project_details else 0
+    elif all_milestones:
+        completed = sum(1 for m in all_milestones if m.status == 'Completed')
+        project_progress = int((completed / len(all_milestones)) * 100) if all_milestones else 0
+    else:
+        project_progress = 0
     
     # Get groups assigned to this faculty for evaluation (via ProjectStatus)
     assigned_project_statuses = ProjectStatus.query.filter_by(teacher_id=current_user.id).all()
@@ -942,7 +965,12 @@ def dashboard_faculty():
                           remarks=all_remarks,
                           today=today,
                           assigned_groups_count=assigned_groups_count,
-                          pending_evaluations_count=pending_evaluations_count)
+                          pending_evaluations_count=pending_evaluations_count,
+                          all_milestones=all_milestones,
+                          all_vivas=all_vivas,
+                          all_project_statuses=all_project_statuses,
+                          all_project_details=all_project_details,
+                          project_progress=project_progress)
 
 @app.route('/dashboard_admin')
 @login_required
@@ -1004,14 +1032,23 @@ def dashboard_admin():
     for ps in all_project_statuses:
         if ps.group_id not in latest_statuses:
             latest_statuses[ps.group_id] = ps.status
-            
-    on_track = list(latest_statuses.values()).count('Accepted')
-    at_risk = list(latest_statuses.values()).count('Conditionally Accepted')
-    delayed = list(latest_statuses.values()).count('Deferred')
-    completed = list(latest_statuses.values()).count('Completed') # Assuming 'Completed' status exists
     
     # Get all groups
     groups = StudentGroup.query.all()
+    
+    # Count groups with no status record as 'Pending'
+    groups_without_status = len([g for g in groups if g.id not in latest_statuses])
+    
+    pending_count = list(latest_statuses.values()).count('Pending') + groups_without_status
+    accepted_count = list(latest_statuses.values()).count('Accepted')
+    conditional_count = list(latest_statuses.values()).count('Conditionally Accepted')
+    deferred_count = list(latest_statuses.values()).count('Deferred')
+    completed = list(latest_statuses.values()).count('Completed')
+    
+    # Keep old variable names for stat cards compatibility
+    on_track = accepted_count
+    at_risk = conditional_count
+    delayed = deferred_count
     
     # Get all remarks
     remarks = Remark.query.all()
@@ -1060,18 +1097,147 @@ def dashboard_admin():
     # Recent login activity
     recent_logins = LoginAttempt.query.order_by(LoginAttempt.timestamp.desc()).limit(10).all()
 
-    # Trends calculation (percentage change) - avoid division by zero
-    def calculate_trend(current, previous):
-        if previous == 0:
-            return 100 if current > 0 else 0
-        return int(((current / previous) - 1) * 100)
-
-    login_trend = calculate_trend(logins_7_days, logins_30_days - logins_7_days) if logins_30_days > logins_7_days else 0
-    user_trend = calculate_trend(new_users_7_days, new_users_30_days - new_users_7_days) if new_users_30_days > new_users_7_days else 0
-    project_trend = calculate_trend(project_activity_7_days, project_activity_30_days - project_activity_7_days) if project_activity_30_days > project_activity_7_days else 0
-    remarks_trend = calculate_trend(remarks_7_days, remarks_30_days - remarks_7_days) if remarks_30_days > remarks_7_days else 0
+    # Build recent activity feed from real data
+    import datetime as dt
+    now = dt.datetime.utcnow()
+    recent_activities = []
     
-    return render_template('dashboard_admin.html', 
+    # Recent users
+    recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
+    for u in recent_users:
+        if u.created_at:
+            recent_activities.append({
+                'icon': 'bi-person-plus',
+                'icon_class': 'success',
+                'title': f'New {u.role} registered: {u.first_name} {u.last_name}',
+                'timestamp': u.created_at
+            })
+    
+    # Recent groups created
+    recent_groups_list = StudentGroup.query.order_by(StudentGroup.created_at.desc()).limit(5).all()
+    for g in recent_groups_list:
+        if g.created_at:
+            recent_activities.append({
+                'icon': 'bi-folder-plus',
+                'icon_class': 'info',
+                'title': f'Group created: {g.group_id} - {g.project_title}',
+                'timestamp': g.created_at
+            })
+    
+    # Recent vivas scheduled
+    recent_vivas = Viva.query.order_by(Viva.created_at.desc()).limit(5).all()
+    for v in recent_vivas:
+        if v.created_at:
+            recent_activities.append({
+                'icon': 'bi-calendar-check',
+                'icon_class': 'info',
+                'title': f'Viva scheduled for {v.group.group_id} on {v.scheduled_date.strftime("%d-%m-%Y")}',
+                'timestamp': v.created_at
+            })
+    
+    # Recent remarks
+    recent_remarks_list = Remark.query.order_by(Remark.timestamp.desc()).limit(5).all()
+    for r in recent_remarks_list:
+        if r.timestamp:
+            teacher = User.query.get(r.teacher_id)
+            group = StudentGroup.query.get(r.group_id)
+            teacher_name = f'{teacher.first_name} {teacher.last_name}' if teacher else 'Unknown'
+            group_name = group.group_id if group else 'Unknown'
+            recent_activities.append({
+                'icon': 'bi-chat-left-text',
+                'icon_class': 'warning',
+                'title': f'Remark by {teacher_name} on {group_name}',
+                'timestamp': r.timestamp
+            })
+    
+    # Recent failed logins
+    recent_failed = LoginAttempt.query.filter_by(success=False).order_by(LoginAttempt.timestamp.desc()).limit(3).all()
+    for lf in recent_failed:
+        if lf.timestamp:
+            recent_activities.append({
+                'icon': 'bi-exclamation-triangle',
+                'icon_class': 'warning',
+                'title': f'Failed login attempt: {lf.email}',
+                'timestamp': lf.timestamp
+            })
+    
+    # Sort all by timestamp descending & take top 5
+    recent_activities.sort(key=lambda x: x['timestamp'], reverse=True)
+    recent_activities = recent_activities[:5]
+    
+    # Calculate time ago for each activity
+    def time_ago(ts):
+        if not ts:
+            return 'Unknown'
+        diff = now - ts
+        seconds = diff.total_seconds()
+        if seconds < 60:
+            return 'Just now'
+        elif seconds < 3600:
+            mins = int(seconds // 60)
+            return f'{mins} min{"s" if mins > 1 else ""} ago'
+        elif seconds < 86400:
+            hours = int(seconds // 3600)
+            return f'{hours} hour{"s" if hours > 1 else ""} ago'
+        elif seconds < 604800:
+            days = int(seconds // 86400)
+            return f'{days} day{"s" if days > 1 else ""} ago'
+        else:
+            return ts.strftime('%d %b %Y')
+    
+    for a in recent_activities:
+        a['time_ago'] = time_ago(a['timestamp'])
+    
+    # System status - real checks
+    try:
+        db.session.execute(db.text('SELECT 1'))
+        db_status = 'Connected'
+        db_ok = True
+    except Exception:
+        db_status = 'Error'
+        db_ok = False
+    
+    system_status = {
+        'db_status': db_status,
+        'db_ok': db_ok,
+        'total_users': len(all_users),
+        'total_groups': len(projects),
+        'total_vivas': Viva.query.count(),
+        'pending_vivas': Viva.query.filter_by(status='Scheduled').count(),
+    }
+
+    # Trends calculation: compare last 7 days vs the 7 days before that (days 8-14)
+    def calculate_trend(current_period, previous_period):
+        if previous_period == 0:
+            return 100 if current_period > 0 else 0
+        return int(((current_period - previous_period) / previous_period) * 100)
+
+    last_14_days = now - timedelta(days=14)
+    
+    # Login trends (week over week)
+    logins_prev_week = LoginAttempt.query.filter(
+        LoginAttempt.success == True,
+        LoginAttempt.timestamp >= last_14_days,
+        LoginAttempt.timestamp < last_7_days
+    ).count()
+    login_trend = calculate_trend(logins_7_days, logins_prev_week)
+    
+    # User trends
+    new_users_prev_week = User.query.filter(
+        User.created_at >= last_14_days,
+        User.created_at < last_7_days
+    ).count()
+    user_trend = calculate_trend(new_users_7_days, new_users_prev_week)
+    
+    # Project activity trends
+    project_activity_prev_week = len([r for r in remarks if r.timestamp and r.timestamp >= last_14_days and r.timestamp < last_7_days]) if remarks else 0
+    project_trend = calculate_trend(project_activity_7_days, project_activity_prev_week)
+    
+    # Remarks trends
+    remarks_prev_week = project_activity_prev_week
+    remarks_trend = calculate_trend(remarks_7_days, remarks_prev_week)
+    
+    return render_template('dashboard_admin_modern.html', 
                           total_users=len(all_users),
                           total_projects=len(projects),
                           total_groups=len(projects),
@@ -1090,6 +1256,10 @@ def dashboard_admin():
                           at_risk=at_risk,
                           delayed=delayed,
                           completed=completed,
+                          pending_count=pending_count,
+                          accepted_count=accepted_count,
+                          conditional_count=conditional_count,
+                          deferred_count=deferred_count,
                           # System usage analytics data
                           logins_7_days=logins_7_days,
                           logins_30_days=logins_30_days, 
@@ -1105,20 +1275,19 @@ def dashboard_admin():
                           remarks_trend=remarks_trend,
                           failed_logins_7_days=failed_logins_7_days,
                           failed_logins_30_days=failed_logins_30_days,
-                          recent_logins=recent_logins)
+                          recent_logins=recent_logins,
+                          recent_activities=recent_activities,
+                          system_status=system_status)
 
 @app.route('/dashboard_supervisor')
 @login_required
 def dashboard_supervisor():
-    if current_user.role != "supervisor" and current_user.role != "admin":
+    if current_user.role != "supervisor":
         flash("Access denied.")
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
     
-    # Get student groups - if supervisor, get only their groups. If admin, get all
-    if current_user.role == 'supervisor':
-        student_groups = StudentGroup.query.filter_by(supervisor_id=current_user.id).all()
-    else:
-        student_groups = StudentGroup.query.all()
+    # Get only this supervisor's groups
+    student_groups = StudentGroup.query.filter_by(supervisor_id=current_user.id).all()
     
     # Get all remarks from teachers for their groups
     all_remarks = []
@@ -1126,18 +1295,41 @@ def dashboard_supervisor():
         remarks = Remark.query.filter_by(group_id=group.id).order_by(Remark.timestamp.desc()).all()
         for remark in remarks:
             teacher = User.query.get(remark.teacher_id)
+            student_name = None
+            if remark.student_id:
+                student = User.query.get(remark.student_id)
+                if student:
+                    student_name = f"{student.first_name} {student.last_name}"
             if teacher:
                 all_remarks.append({
                     'content': remark.content,
                     'teacher_name': f"{teacher.first_name} {teacher.last_name}",
                     'timestamp': remark.timestamp,
                     'group_id': group.group_id,
-                    'project_title': group.project_title
+                    'project_title': group.project_title,
+                    'student_name': student_name
                 })
+    
+    # Get milestones for all supervised groups
+    group_ids = [g.id for g in student_groups]
+    all_milestones = ProjectMilestone.query.filter(ProjectMilestone.group_id.in_(group_ids)).order_by(ProjectMilestone.due_date.asc()).all() if group_ids else []
+    
+    # Get vivas for supervised groups
+    all_vivas = Viva.query.filter(Viva.group_id.in_(group_ids)).order_by(Viva.scheduled_date.asc()).all() if group_ids else []
+    
+    # Get project statuses
+    all_project_statuses = {ps.group_id: ps for ps in ProjectStatus.query.filter(ProjectStatus.group_id.in_(group_ids)).all()} if group_ids else {}
+    
+    # Get project details (progress)
+    all_project_details = {pd.group_id: pd for pd in ProjectDetails.query.filter(ProjectDetails.group_id.in_(group_ids)).all()} if group_ids else {}
     
     return render_template('dashboard_supervisor.html', 
                            supervised_groups=student_groups,
-                           all_remarks=all_remarks)
+                           all_remarks=all_remarks,
+                           all_milestones=all_milestones,
+                           all_vivas=all_vivas,
+                           all_project_statuses=all_project_statuses,
+                           all_project_details=all_project_details)
 
 @app.route('/dashboard/student')
 @role_required('student')
@@ -1161,7 +1353,10 @@ def dashboard_student():
     # Get remarks/feedback for the group
     remarks = []
     if student_group:
-        remarks = Remark.query.filter_by(group_id=student_group.id).order_by(Remark.timestamp.desc()).all()
+        # Show remarks for the whole group (student_id is NULL) or specifically for this student
+        remarks = Remark.query.filter_by(group_id=student_group.id).filter(
+            db.or_(Remark.student_id == None, Remark.student_id == current_user.id)
+        ).order_by(Remark.timestamp.desc()).all()
     
     # Get all room schedules (all classes)
     room_schedules = RoomSchedule.query.all()
@@ -1209,36 +1404,45 @@ def dashboard_student():
     for day in days:
         schedules_by_day[day].sort(key=lambda x: x['time'])
     
+    # Get real milestones from DB for the student's group
+    upcoming_milestones = []
+    project_progress = 0
+    if student_group:
+        milestones = ProjectMilestone.query.filter_by(group_id=student_group.id).order_by(ProjectMilestone.due_date.asc()).all()
+        now = datetime.datetime.now().date()
+        for m in milestones:
+            days_left = (m.due_date - now).days
+            upcoming_milestones.append({
+                'id': m.id,
+                'title': m.title,
+                'description': m.description,
+                'due_date': m.due_date.strftime('%b %d, %Y'),
+                'days_left': days_left,
+                'status': m.status,
+                'completed': m.status == 'Completed'
+            })
+        
+        # Get real progress from ProjectDetails
+        details = ProjectDetails.query.filter_by(group_id=student_group.id).first()
+        if details:
+            project_progress = details.progress
+        else:
+            # Calculate progress from milestones if no explicit progress set
+            if milestones:
+                completed_count = sum(1 for m in milestones if m.status == 'Completed')
+                project_progress = int((completed_count / len(milestones)) * 100)
+    
     return render_template(
         'dashboard_student.html',
         student_group=student_group,
         supervisor=supervisor,
         remarks=remarks,
-        today_schedules=schedules_by_day['Monday'],
-        tomorrow_schedules=schedules_by_day['Tuesday'],
+        today_schedules=schedules_by_day.get(today, []),
+        tomorrow_schedules=schedules_by_day.get(tomorrow, []),
         today=today,
         tomorrow=tomorrow,
-        upcoming_milestones=[
-            {
-                'title': 'Requirements Document Submission',
-                'due_date': (datetime.datetime.now() + datetime.timedelta(days=5)).strftime('%Y-%m-%d'),
-                'days_left': 5,
-                'completed': False
-            },
-            {
-                'title': 'Prototype Presentation',
-                'due_date': (datetime.datetime.now() + datetime.timedelta(days=15)).strftime('%Y-%m-%d'),
-                'days_left': 15,
-                'completed': False
-            },
-            {
-                'title': 'Progress Report',
-                'due_date': (datetime.datetime.now() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'),
-                'days_left': 30,
-                'completed': False
-            }
-        ],
-        project_progress=35,
+        upcoming_milestones=upcoming_milestones,
+        project_progress=project_progress,
         current_user=current_user
     )
 
@@ -1251,11 +1455,12 @@ def admin_db():
 @app.route('/add_remark', methods=['POST'])
 @login_required
 def add_remark():
-    if current_user.role not in ("faculty", "teacher", "admin"):
+    if current_user.role not in ("faculty", "teacher", "admin", "supervisor"):
         flash("Access denied.")
         return redirect(url_for('index'))
     
     group_id = request.form.get('group_id')
+    student_id = request.form.get('student_id')  # Optional: specific student
     content = request.form.get('content')
     
     try:
@@ -1264,20 +1469,40 @@ def add_remark():
             flash("Group not found", 'danger')
             return redirect(url_for('dashboard'))
         
+        # Supervisors can only remark on their own groups
+        if current_user.role == 'supervisor' and group.supervisor_id != current_user.id:
+            flash("You can only send remarks to your own groups", 'danger')
+            return redirect(url_for('dashboard'))
+        
         if not content or len(str(content).strip()) == 0:
             flash("Remark content cannot be empty", 'danger')
             return redirect(url_for('dashboard'))
         
+        # Validate student_id if provided
+        target_student_id = None
+        if student_id and student_id.strip():
+            target_student_id = int(student_id)
+            # Verify this student is a member of the selected group
+            member = GroupMember.query.filter_by(user_id=target_student_id, group_id=group.id).first()
+            if not member:
+                flash("Selected student is not a member of this group", 'danger')
+                return redirect(url_for('dashboard'))
+        
         new_remark = Remark(
             content=content,
             teacher_id=current_user.id,
-            group_id=group.id
+            group_id=group.id,
+            student_id=target_student_id
         )
         
         db.session.add(new_remark)
         db.session.commit()
         
-        logger.info(f"Remark added by {current_user.email} for group {group.group_id}")
+        if target_student_id:
+            student = User.query.get(target_student_id)
+            logger.info(f"Remark added by {current_user.email} for student {student.email} in group {group.group_id}")
+        else:
+            logger.info(f"Remark added by {current_user.email} for group {group.group_id}")
         flash("Remark added successfully", 'success')
         return redirect(url_for('dashboard'))
     
@@ -1291,6 +1516,184 @@ def add_remark():
         logger.error(f"Unexpected error adding remark: {str(e)}")
         flash(f"Unexpected error: {str(e)}", 'danger')
         return redirect(url_for('dashboard'))
+
+# ========== EVALUATION ROUTES ==========
+
+@app.route('/supervisor/add_milestone', methods=['POST'])
+@login_required
+def supervisor_add_milestone():
+    if current_user.role != 'supervisor':
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    group_id = request.form.get('group_id')
+    title = request.form.get('title', '').strip()
+    description = request.form.get('description', '').strip()
+    due_date_str = request.form.get('due_date')
+    
+    try:
+        group = StudentGroup.query.get(group_id)
+        if not group or group.supervisor_id != current_user.id:
+            flash("Invalid group or access denied.", 'danger')
+            return redirect(url_for('dashboard'))
+        
+        if not title:
+            flash("Milestone title is required.", 'danger')
+            return redirect(url_for('dashboard'))
+        
+        due_date = datetime.datetime.strptime(due_date_str, '%Y-%m-%d').date()
+        
+        milestone = ProjectMilestone(
+            title=title,
+            description=description,
+            due_date=due_date,
+            status='Pending',
+            group_id=group.id
+        )
+        db.session.add(milestone)
+        db.session.commit()
+        
+        logger.info(f"Milestone '{title}' added for group {group.group_id} by {current_user.email}")
+        flash(f"Milestone '{title}' added successfully.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding milestone: {str(e)}")
+        flash(f"Error adding milestone: {str(e)}", 'danger')
+    
+    return redirect(url_for('dashboard'))
+
+@app.route('/supervisor/update_milestone/<int:milestone_id>', methods=['POST'])
+@login_required
+def supervisor_update_milestone(milestone_id):
+    if current_user.role != 'supervisor':
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        milestone = ProjectMilestone.query.get_or_404(milestone_id)
+        group = StudentGroup.query.get(milestone.group_id)
+        
+        if not group or group.supervisor_id != current_user.id:
+            flash("Access denied.", 'danger')
+            return redirect(url_for('dashboard'))
+        
+        new_status = request.form.get('status', 'Pending')
+        if new_status in ('Pending', 'Completed', 'Late'):
+            milestone.status = new_status
+            db.session.commit()
+            flash(f"Milestone '{milestone.title}' marked as {new_status}.", 'success')
+        else:
+            flash("Invalid status.", 'danger')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating milestone: {str(e)}")
+        flash(f"Error: {str(e)}", 'danger')
+    
+    return redirect(url_for('dashboard'))
+
+@app.route('/supervisor/delete_milestone/<int:milestone_id>', methods=['POST'])
+@login_required
+def supervisor_delete_milestone(milestone_id):
+    if current_user.role != 'supervisor':
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        milestone = ProjectMilestone.query.get_or_404(milestone_id)
+        group = StudentGroup.query.get(milestone.group_id)
+        
+        if not group or group.supervisor_id != current_user.id:
+            flash("Access denied.", 'danger')
+            return redirect(url_for('dashboard'))
+        
+        title = milestone.title
+        db.session.delete(milestone)
+        db.session.commit()
+        flash(f"Milestone '{title}' deleted.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", 'danger')
+    
+    return redirect(url_for('dashboard'))
+
+@app.route('/supervisor/update_progress', methods=['POST'])
+@login_required
+def supervisor_update_progress():
+    if current_user.role != 'supervisor':
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    group_id = request.form.get('group_id')
+    progress = request.form.get('progress', 0, type=int)
+    
+    try:
+        group = StudentGroup.query.get(group_id)
+        if not group or group.supervisor_id != current_user.id:
+            flash("Invalid group or access denied.", 'danger')
+            return redirect(url_for('dashboard'))
+        
+        progress = max(0, min(100, progress))
+        
+        details = ProjectDetails.query.filter_by(group_id=group.id).first()
+        if not details:
+            details = ProjectDetails(group_id=group.id, progress=progress)
+            db.session.add(details)
+        else:
+            details.progress = progress
+        
+        db.session.commit()
+        flash(f"Progress for {group.group_id} updated to {progress}%.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", 'danger')
+    
+    return redirect(url_for('dashboard'))
+
+@app.route('/supervisor/evaluate_group', methods=['POST'])
+@login_required
+def supervisor_evaluate_group():
+    if current_user.role != 'supervisor':
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    group_id = request.form.get('group_id')
+    status = request.form.get('status', 'Pending')
+    feedback = request.form.get('feedback', '').strip()
+    student_feedback = request.form.get('student_feedback', '').strip()
+    
+    try:
+        group = StudentGroup.query.get(group_id)
+        if not group or group.supervisor_id != current_user.id:
+            flash("Invalid group or access denied.", 'danger')
+            return redirect(url_for('dashboard'))
+        
+        if status not in ('Pending', 'Accepted', 'Conditionally Accepted', 'Deferred'):
+            flash("Invalid evaluation status.", 'danger')
+            return redirect(url_for('dashboard'))
+        
+        project_status = ProjectStatus.query.filter_by(group_id=group.id, teacher_id=current_user.id).first()
+        if not project_status:
+            project_status = ProjectStatus(
+                group_id=group.id,
+                teacher_id=current_user.id,
+                status=status,
+                feedback=feedback,
+                student_feedback=student_feedback
+            )
+            db.session.add(project_status)
+        else:
+            project_status.status = status
+            project_status.feedback = feedback
+            project_status.student_feedback = student_feedback
+        
+        db.session.commit()
+        logger.info(f"Group {group.group_id} evaluated as '{status}' by {current_user.email}")
+        flash(f"Group {group.group_id} evaluated as '{status}'.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", 'danger')
+    
+    return redirect(url_for('dashboard'))
 
 @app.route('/seed_data')
 def seed_data():
@@ -1393,13 +1796,13 @@ def authorize():
         
         # Redirect based on user role
         if user.role == 'admin':
-            return redirect(url_for('dashboard_admin'))
+            return redirect(url_for('dashboard'))
         elif user.role == 'student':
-            return redirect(url_for('dashboard_student'))
+            return redirect(url_for('dashboard'))
         elif user.role in ('faculty', 'teacher'):
-            return redirect(url_for('dashboard_faculty'))
+            return redirect(url_for('dashboard'))
         elif user.role == 'supervisor':
-            return redirect(url_for('dashboard_supervisor'))
+            return redirect(url_for('dashboard'))
         
         return redirect(url_for('index'))
     except Exception as e:
@@ -1516,7 +1919,7 @@ def admin_add_user():
     # Check if user already exists
     if User.query.filter_by(email=email).first():
         flash('Email already registered', 'danger')
-        return redirect(url_for('dashboard_admin') + '#users')
+        return redirect(url_for('dashboard') + '#users')
     
     # Create new user
     user = User(
@@ -1531,7 +1934,7 @@ def admin_add_user():
     db.session.commit()
     
     flash(f'User {first_name} {last_name} added successfully', 'success')
-    return redirect(url_for('dashboard_admin') + '#users')
+    return redirect(url_for('dashboard') + '#users')
 
 @app.route('/admin/edit_user/<int:user_id>', methods=['POST'])
 @login_required
@@ -1542,18 +1945,30 @@ def admin_edit_user(user_id):
     
     user = User.query.get_or_404(user_id)
     
-    user.email = request.form.get('email')
-    user.first_name = request.form.get('firstName')
-    user.last_name = request.form.get('lastName')
-    user.role = request.form.get('role')
-    
-    # Only update password if provided
-    if request.form.get('password'):
-        user.set_password(request.form.get('password'))
-    
-    db.session.commit()
-    flash(f'User {user.first_name} {user.last_name} updated successfully', 'success')
-    return redirect(url_for('dashboard_admin') + '#users')
+    try:
+        new_email = request.form.get('email')
+        # Check for duplicate email (excluding current user)
+        if new_email != user.email:
+            existing = User.query.filter_by(email=new_email).first()
+            if existing:
+                flash(f'Email {new_email} is already in use by another user', 'danger')
+                return redirect(url_for('dashboard') + '#users')
+        
+        user.email = new_email
+        user.first_name = request.form.get('firstName')
+        user.last_name = request.form.get('lastName')
+        user.role = request.form.get('role')
+        
+        # Only update password if provided
+        if request.form.get('password'):
+            user.set_password(request.form.get('password'))
+        
+        db.session.commit()
+        flash(f'User {user.first_name} {user.last_name} updated successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating user: {str(e)}', 'danger')
+    return redirect(url_for('dashboard') + '#users')
 
 @app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
 @login_required
@@ -1574,9 +1989,12 @@ def admin_delete_user(user_id):
             # Delete any group memberships
             GroupMember.query.filter_by(user_id=user.id).delete()
         
-        # Delete user remarks if they were faculty
-        if user.role == 'faculty':
+        # Delete user remarks if they were faculty/teacher
+        if user.role in ('faculty', 'teacher'):
             Remark.query.filter_by(teacher_id=user.id).delete()
+        
+        # Delete ProjectStatus records where this user is the teacher/evaluator
+        ProjectStatus.query.filter_by(teacher_id=user.id).delete()
         
         # Handle groups if they were a supervisor
         if user.role == 'supervisor':
@@ -1594,7 +2012,7 @@ def admin_delete_user(user_id):
         db.session.rollback()
         flash(f'Error deleting user: {str(e)}', 'danger')
     
-    return redirect(url_for('dashboard_admin') + '#users')
+    return redirect(url_for('dashboard') + '#users')
 
 # Admin Project Management
 @app.route('/admin/add_project', methods=['POST'])
@@ -1613,7 +2031,7 @@ def admin_add_project():
         # Validate project title is provided (required)
         if not project_title:
             flash('Project Title is required', 'danger')
-            return redirect(url_for('dashboard_admin'))
+            return redirect(url_for('dashboard'))
         
         # Auto-generate Group ID if not provided
         if not group_id:
@@ -1624,7 +2042,7 @@ def admin_add_project():
         # Check if group_id already exists
         if StudentGroup.query.filter_by(group_id=group_id).first():
             flash(f'Group ID {group_id} already exists. Please use a different ID.', 'danger')
-            return redirect(url_for('dashboard_admin'))
+            return redirect(url_for('dashboard'))
         
         # Create new project group
         group = StudentGroup(
@@ -1662,7 +2080,7 @@ def admin_add_project():
         db.session.rollback()
     
     # Always redirect back to admin dashboard - regardless of success or failure
-    return redirect(url_for('dashboard_admin'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/admin/edit_project/<int:project_id>', methods=['POST'])
 @login_required
@@ -1673,13 +2091,18 @@ def admin_edit_project(project_id):
     
     group = StudentGroup.query.get_or_404(project_id)
     
-    group.group_id = request.form.get('group_id')
-    group.project_title = request.form.get('project_title')
-    group.supervisor_id = request.form.get('supervisor_id') if request.form.get('supervisor_id') else None
-    
-    db.session.commit()
-    flash(f'Project "{group.project_title}" updated successfully', 'success')
-    return redirect(url_for('dashboard_admin'))
+    try:
+        group.group_id = request.form.get('group_id')
+        group.project_title = request.form.get('project_title')
+        supervisor_id = request.form.get('supervisor_id')
+        group.supervisor_id = int(supervisor_id) if supervisor_id else None
+        
+        db.session.commit()
+        flash(f'Project "{group.project_title}" updated successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating project: {str(e)}', 'danger')
+    return redirect(url_for('dashboard'))
 
 @app.route('/admin/delete_project/<int:project_id>', methods=['POST'])
 @login_required
@@ -1710,7 +2133,7 @@ def admin_delete_project(project_id):
         db.session.rollback()
         flash(f'Error deleting group project: {str(e)}', 'danger')
     
-    return redirect(url_for('dashboard_admin'))
+    return redirect(url_for('dashboard'))
 
 # Admin Group Management
 @app.route('/admin/assign_member', methods=['POST'])
@@ -1731,7 +2154,7 @@ def admin_assign_member():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'message': message})
         flash(message, 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     # Find the group
     group = StudentGroup.query.filter_by(id=group_id).first()
@@ -1740,7 +2163,7 @@ def admin_assign_member():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'message': message})
         flash(message, 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     # Process multiple students
     added_students = []
@@ -1784,7 +2207,7 @@ def admin_assign_member():
         return jsonify({'success': bool(added_students), 'message': full_message})
     
     flash(full_message, message_type)
-    return redirect(url_for('dashboard_admin'))
+    return redirect(url_for('dashboard'))
 
 # Get the list of students in a group
 @app.route('/admin/group_members/<int:group_id>')
@@ -1819,7 +2242,7 @@ def admin_remove_member():
     # Validate inputs
     if not group_id or not student_id:
         flash('Missing required information', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     # Delete the membership
     membership = GroupMember.query.filter_by(user_id=student_id, group_id=group_id).first()
@@ -1830,7 +2253,7 @@ def admin_remove_member():
     else:
         flash('Student not found in group', 'danger')
     
-    return redirect(url_for('dashboard_admin'))
+    return redirect(url_for('dashboard'))
 
 # Admin System Settings
 @app.route('/admin/save_settings', methods=['POST'])
@@ -1848,7 +2271,7 @@ def admin_save_settings():
     # In a real app, you would save these settings to the database or a config file
     # For now, we'll just show a success message
     flash('System settings updated successfully', 'success')
-    return redirect(url_for('dashboard_admin'))
+    return redirect(url_for('dashboard'))
 
 # Admin Teacher Username Management
 @app.route('/admin/teacher_usernames')
@@ -1875,17 +2298,23 @@ def admin_add_teacher_username():
         flash("Access denied.")
         return redirect(url_for('index'))
     
-    username = request.form.get('username').lower()
+    raw_username = request.form.get('username')
     
     # Validate username
+    if not raw_username or not raw_username.strip():
+        flash('Username is required', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    username = raw_username.strip().lower()
+    
     if not username:
         flash('Username is required', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     # Check if username already exists
     if TeacherUsername.query.filter_by(username=username).first():
         flash(f'Username {username} already exists', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     # Create new teacher username
     teacher_username = TeacherUsername(username=username)
@@ -1893,7 +2322,7 @@ def admin_add_teacher_username():
     db.session.commit()
     
     flash(f'Teacher username {username} added successfully', 'success')
-    return redirect(url_for('dashboard_admin'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/admin/delete_teacher_username/<int:username_id>', methods=['POST'])
 @login_required
@@ -1907,13 +2336,13 @@ def admin_delete_teacher_username(username_id):
     # Check if username is already in use
     if username.is_used:
         flash('Cannot delete username that is already in use', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     db.session.delete(username)
     db.session.commit()
     
     flash(f'Teacher username {username.username} has been deleted', 'success')
-    return redirect(url_for('dashboard_admin'))
+    return redirect(url_for('dashboard'))
 
 # Scheduling Routes
 @app.route("/admin/scheduling", methods=["GET"])
@@ -1921,7 +2350,7 @@ def admin_delete_teacher_username(username_id):
 def admin_scheduling():
     if current_user.role != 'admin':
         flash('You do not have permission to access this page', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     # Get all rooms, time slots, faculty, and groups
     rooms = Room.query.all()
@@ -1968,7 +2397,7 @@ def admin_scheduling():
 def admin_add_teacher_schedule():
     if current_user.role != 'admin':
         flash('You do not have permission to manage schedules', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     try:
         teacher_id = request.form.get('teacher_id')
@@ -2070,7 +2499,7 @@ def admin_add_teacher_schedule():
 def admin_delete_teacher_schedule(schedule_id):
     if current_user.role != 'admin':
         flash('You do not have permission to manage schedules', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     try:
         # Get the teacher schedule
@@ -2101,7 +2530,7 @@ def admin_delete_teacher_schedule(schedule_id):
 def admin_add_room_schedule():
     if current_user.role != 'admin':
         flash('You do not have permission to manage schedules', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     room_id = request.form.get('room_id')
     time_slot_id = request.form.get('time_slot_id')
@@ -2163,7 +2592,7 @@ def admin_add_room_schedule():
 def admin_delete_room_schedule(schedule_id):
     if current_user.role != 'admin':
         flash('You do not have permission to manage schedules', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     try:
         # Get the room schedule
@@ -2181,13 +2610,73 @@ def admin_delete_room_schedule(schedule_id):
         
     return redirect(url_for('admin_scheduling'))
 
+# Room Management Routes
+@app.route("/admin/add_room", methods=["POST"])
+@login_required
+def admin_add_room():
+    if current_user.role != 'admin':
+        flash('You do not have permission to manage rooms', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    room_name = request.form.get('room_name', '').strip()
+    capacity = request.form.get('capacity', 30, type=int)
+    description = request.form.get('description', '').strip()
+    
+    if not room_name:
+        flash('Room name is required', 'danger')
+        return redirect(url_for('admin_scheduling'))
+    
+    # Check if room already exists
+    existing_room = Room.query.filter_by(name=room_name).first()
+    if existing_room:
+        flash(f'Room "{room_name}" already exists', 'warning')
+        return redirect(url_for('admin_scheduling'))
+    
+    try:
+        room = Room(name=room_name, capacity=capacity, description=description if description else None)
+        db.session.add(room)
+        db.session.commit()
+        flash(f'Room "{room_name}" added successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding room: {str(e)}")
+        flash(f'Error adding room: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_scheduling'))
+
+
+@app.route("/admin/delete_room/<int:room_id>", methods=["POST"])
+@login_required
+def admin_delete_room(room_id):
+    if current_user.role != 'admin':
+        flash('You do not have permission to manage rooms', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        room = Room.query.get_or_404(room_id)
+        room_name = room.name
+        
+        # Delete all room schedules for this room first
+        RoomSchedule.query.filter_by(room_id=room_id).delete()
+        
+        db.session.delete(room)
+        db.session.commit()
+        flash(f'Room "{room_name}" and its schedules deleted successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting room: {str(e)}")
+        flash(f'Error deleting room: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_scheduling'))
+
+
 # Viva Scheduling Routes
 @app.route("/admin/viva_scheduling", methods=["GET"])
 @login_required
 def admin_viva_scheduling():
     if current_user.role != 'admin':
         flash('You do not have permission to access this page', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     # Get all student groups, teachers, and rooms
     groups = StudentGroup.query.all()
@@ -2214,7 +2703,7 @@ def admin_viva_scheduling():
 def admin_schedule_viva():
     if current_user.role != 'admin':
         flash('You do not have permission to manage vivas', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     # Get form data
     group_id = request.form.get('group_id')
@@ -2267,7 +2756,7 @@ def admin_schedule_viva():
 def admin_delete_viva(viva_id):
     if current_user.role != 'admin':
         flash('You do not have permission to manage vivas', 'danger')
-        return redirect(url_for('dashboard_admin'))
+        return redirect(url_for('dashboard'))
     
     viva = Viva.query.get_or_404(viva_id)
     db.session.delete(viva)
@@ -2694,7 +3183,7 @@ def supervisor_add_project():
     # Check if group_id already exists
     if StudentGroup.query.filter_by(group_id=group_id).first():
         flash(f'Group ID {group_id} already exists', 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     # Create new project group with current supervisor
     group = StudentGroup(
@@ -2708,7 +3197,7 @@ def supervisor_add_project():
     db.session.commit()
     
     flash(f'Project "{project_title}" added successfully', 'success')
-    return redirect(url_for('dashboard_supervisor'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/add_project_and_group', methods=['GET', 'POST'])
 @login_required
@@ -2785,9 +3274,9 @@ def add_project_and_group():
         flash(f'Project "{project_title}" created and {len(selected_students)} students assigned successfully', 'success')
         
         if current_user.role == 'supervisor':
-            return redirect(url_for('dashboard_supervisor'))
+            return redirect(url_for('dashboard'))
         else:
-            return redirect(url_for('dashboard_admin'))
+            return redirect(url_for('dashboard'))
     
     return render_template('add_project_and_group.html', students=students, supervisors=supervisors)
 
@@ -2803,7 +3292,7 @@ def supervisor_edit_project(project_id):
     # Verify the supervisor owns this project
     if group.supervisor_id != current_user.id:
         flash("You don't have permission to edit this project.", 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     group.group_id = request.form.get('group_id')
     group.project_title = request.form.get('project_title')
@@ -2811,7 +3300,7 @@ def supervisor_edit_project(project_id):
     
     db.session.commit()
     flash(f'Project "{group.project_title}" updated successfully', 'success')
-    return redirect(url_for('dashboard_supervisor'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/supervisor/delete_project/<int:project_id>', methods=['POST'])
 @login_required
@@ -2825,7 +3314,7 @@ def supervisor_delete_project(project_id):
     # Verify the supervisor owns this project
     if group.supervisor_id != current_user.id:
         flash("You don't have permission to delete this project.", 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     project_title = group.project_title
     
@@ -2843,7 +3332,7 @@ def supervisor_delete_project(project_id):
         db.session.rollback()
         flash(f'Error deleting group project: {str(e)}', 'danger')
     
-    return redirect(url_for('dashboard_supervisor'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/supervisor/assign_member', methods=['POST'])
 @login_required
@@ -2858,36 +3347,36 @@ def supervisor_assign_member():
     # Validate inputs
     if not group_id or not student_id:
         flash('Missing required information', 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     # Find the group
     group = StudentGroup.query.filter_by(id=group_id).first()
     if not group:
         flash('Group not found', 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     # Verify the supervisor owns this project
     if group.supervisor_id != current_user.id:
         flash("You don't have permission to modify this project.", 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     # Find the student
     student = User.query.filter_by(id=student_id, role='student').first()
     if not student:
         flash('Student not found', 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     # Check if the student is already in another group
     existing_membership = GroupMember.query.filter_by(user_id=student.id).first()
     if existing_membership and existing_membership.group_id != int(group_id):
         flash(f'Student is already assigned to another group', 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     # Check if the group already has 2 members (maximum allowed)
     current_members = GroupMember.query.filter_by(group_id=group.id).count()
     if current_members >= 2:
         flash(f'Group already has the maximum of 2 members', 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     # Create a GroupMember relationship if it doesn't already exist
     if not GroupMember.query.filter_by(user_id=student.id, group_id=group.id).first():
@@ -2898,7 +3387,7 @@ def supervisor_assign_member():
     else:
         flash(f'Student already in the group', 'warning')
     
-    return redirect(url_for('dashboard_supervisor'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/supervisor/remove_member', methods=['POST'])
 @login_required
@@ -2913,7 +3402,7 @@ def supervisor_remove_member():
     # Validate inputs
     if not group_id or not student_id:
         flash('Missing required information', 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     # Find the group
     group = StudentGroup.query.get_or_404(group_id)
@@ -2921,7 +3410,7 @@ def supervisor_remove_member():
     # Verify the supervisor owns this project
     if group.supervisor_id != current_user.id:
         flash("You don't have permission to modify this project.", 'danger')
-        return redirect(url_for('dashboard_supervisor'))
+        return redirect(url_for('dashboard'))
     
     # Delete the membership
     membership = GroupMember.query.filter_by(user_id=student_id, group_id=group_id).first()
@@ -2932,7 +3421,7 @@ def supervisor_remove_member():
     else:
         flash('Student not found in group', 'danger')
     
-    return redirect(url_for('dashboard_supervisor'))
+    return redirect(url_for('dashboard'))
 
 @app.route('/supervisor/group_members/<int:group_id>')
 @login_required
@@ -2980,7 +3469,7 @@ def supervisor_available_students():
     } for student in students])
 
 # Report Routes
-@app.route('/admin/generate_user_summary', methods=['POST'])
+@app.route('/admin/generate_user_summary', methods=['GET'])
 @login_required
 def generate_user_summary():
     if current_user.role != 'admin':
@@ -3114,7 +3603,7 @@ def generate_user_summary():
         headers={'Content-Disposition': f'attachment; filename=user_summary_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'}
     )
 
-@app.route('/admin/generate_project_status', methods=['POST'])
+@app.route('/admin/generate_project_status', methods=['GET'])
 @login_required
 def generate_project_status():
     if current_user.role != 'admin':
@@ -3168,8 +3657,21 @@ def generate_project_status():
     
     row += 1
     total_projects = 0
+    
+    # Get the latest status per group for accurate counting
+    all_groups = StudentGroup.query.all()
+    all_ps = ProjectStatus.query.order_by(ProjectStatus.created_at.desc()).all()
+    latest_statuses = {}
+    for ps in all_ps:
+        if ps.group_id not in latest_statuses:
+            latest_statuses[ps.group_id] = ps.status
+    # Groups without any status record count as 'Pending'
+    for g in all_groups:
+        if g.id not in latest_statuses:
+            latest_statuses[g.id] = 'Pending'
+    
     for status in statuses:
-        count = ProjectStatus.query.filter_by(status=status).count()
+        count = list(latest_statuses.values()).count(status)
         total_projects += count
         
         ws[f'A{row}'] = status
@@ -3249,7 +3751,7 @@ def generate_project_status():
         headers={'Content-Disposition': f'attachment; filename=project_status_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'}
     )
 
-@app.route('/admin/generate_evaluation_summary', methods=['POST'])
+@app.route('/admin/generate_evaluation_summary', methods=['GET'])
 @login_required
 def generate_evaluation_summary():
     if current_user.role != 'admin':
@@ -3392,7 +3894,7 @@ def generate_evaluation_summary():
         headers={'Content-Disposition': f'attachment; filename=evaluation_summary_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'}
     )
 
-@app.route('/admin/export_user_data', methods=['POST'])
+@app.route('/admin/export_user_data', methods=['GET'])
 @login_required
 def export_user_data():
     if current_user.role != 'admin':
@@ -3466,7 +3968,7 @@ def export_user_data():
         headers={'Content-Disposition': f'attachment; filename=user_data_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'}
     )
 
-@app.route('/admin/export_project_data', methods=['POST'])
+@app.route('/admin/export_project_data', methods=['GET'])
 @login_required
 def export_project_data():
     if current_user.role != 'admin':
@@ -3508,7 +4010,7 @@ def export_project_data():
     groups = StudentGroup.query.all()
     for row_num, group in enumerate(groups, 2):
         supervisor_name = f"{group.supervisor.first_name} {group.supervisor.last_name}" if group.supervisor else "Unassigned"
-        status_record = ProjectStatus.query.filter_by(group_id=group.id).first()
+        status_record = ProjectStatus.query.filter_by(group_id=group.id).order_by(ProjectStatus.created_at.desc()).first()
         
         ws.cell(row=row_num, column=1).value = group.group_id
         ws.cell(row=row_num, column=2).value = group.project_title
@@ -3543,7 +4045,7 @@ def export_project_data():
         headers={'Content-Disposition': f'attachment; filename=project_data_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'}
     )
 
-@app.route('/admin/export_evaluation_data', methods=['POST'])
+@app.route('/admin/export_evaluation_data', methods=['GET'])
 @login_required
 def export_evaluation_data():
     if current_user.role != 'admin':
@@ -3694,6 +4196,30 @@ def login_activity():
                           unique_users=unique_users,
                           logins_24h=logins_24h)
 
+def recreate_tables():
+    """Drop and recreate all tables."""
+    db.drop_all()
+    db.create_all()
+    print("All tables recreated.")
+
+# Vercel deployment initialization
+if os.environ.get('VERCEL'):
+    with app.app_context():
+        try:
+            # Create tables in /tmp database (configured in URI)
+            db.create_all()
+            
+            # Simple check/seed for admin to ensure app is usable
+            # Note: This runs on every cold start if /tmp is wiped, so we check existence
+            if not User.query.filter_by(email='admin@example.com').first():
+                admin = User(email='admin@example.com', first_name='Admin', last_name='User', role='admin')
+                admin.set_password('admin123')
+                db.session.add(admin)
+                db.session.commit()
+                print("Vercel: Admin user created.")
+        except Exception as e:
+            print(f"Vercel Init Error: {e}")
+
 if __name__ == '__main__':
     with app.app_context():
         try:
@@ -3783,8 +4309,33 @@ if __name__ == '__main__':
                 'issues': []
             }), 500
     
-    # Register blueprints (after app context is set up)
-    from project_routes import project_bp
-    app.register_blueprint(project_bp, url_prefix='/projects')
-    
+# Register blueprints (must be after db/User definition to avoid circular imports)
+# On Vercel, this must run at module level, not just in __main__
+try:
+    # Temporarily disabled due to circular import - will fix
+    # from project_routes import project_bp
+    # app.register_blueprint(project_bp, url_prefix='/projects')
+    pass
+except Exception as e:
+    print(f"Error registering blueprint: {e}")
+
+if __name__ == '__main__':
+    with app.app_context():
+        try:
+            # Try to query the User model to check if all columns exist
+            User.query.first()
+            print("Database tables exist with current schema.")
+            # ... (rest of the startup checks can remain here or be simplified)
+            
+            # Check if the group_member table exists - if not, recreate all tables
+            inspector = inspect(db.engine)
+            if 'group_member' not in inspector.get_table_names():
+                print("Missing group_member table. Recreating all tables...")
+                recreate_tables()
+
+        except Exception as e:
+            # If there's an error (like missing columns), drop and recreate all tables
+            print(f"Error initializing database: {str(e)}")
+            recreate_tables()
+
     app.run(host='0.0.0.0', debug=True)

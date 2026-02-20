@@ -7,156 +7,124 @@
     <title>Faculty Dashboard - FYP Management System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/modern-ui.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            background-color: #f8f9fa;
+        .navbar { position: relative; z-index: 1050; }
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+            color: white; padding: 2rem 1.5rem; margin: 0;
+            border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+            position: relative; z-index: 1000; overflow: visible;
         }
-
-        .sidebar {
-            min-height: calc(100vh - 56px);
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            background-color: #ffffff;
+        .welcome-text { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .subtitle-text { opacity: 0.9; font-weight: 500; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .content-section { display: none; animation: fadeInUp 0.5s ease-out; }
+        .content-section.active { display: block; }
+        .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .quick-action-card {
+            background: white; border-radius: var(--radius-lg); padding: 1.5rem; text-align: center;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200);
+            transition: all 0.3s ease; cursor: pointer; text-decoration: none; color: var(--gray-800);
         }
-
-        .nav-link {
-            color: #333;
-            border-radius: 0;
-            padding: 0.8rem 1rem;
+        .quick-action-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary-300); color: var(--primary-700); }
+        .quick-action-card i { font-size: 2.5rem; color: var(--primary-600); margin-bottom: 1rem; }
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+            .quick-actions { grid-template-columns: 1fr; }
+            .sidebar { position: fixed; left: -100%; top: 0; z-index: 1000; transition: left 0.3s ease; }
+            .sidebar.show { left: 0; }
+            .main-content { margin-left: 0; }
         }
-
-        .nav-link:hover {
-            background-color: #f8f9fa;
-        }
-
-        .nav-link.active {
-            color: #fff;
-            background-color: #0d6efd;
-        }
-
-        .content-section {
-            display: none;
-        }
-
-        .content-section.active {
-            display: block;
-        }
-
-        .dashboard-card {
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-            background-color: #ffffff;
-        }
-
-        .dashboard-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .progress {
-            height: 10px;
-        }
-
-        /* Main content area styling */
-        .col-lg-10 {
-            background-color: #f8f9fa;
-        }
-
-        .card {
-            background-color: #ffffff;
-            border-color: #dee2e6;
-        }
-
-        h2 {
-            color: #333;
-        }
-
-        /* Ensure text is readable */
-        p,
-        label,
-        span {
-            color: #333;
-        }
-
-        /* Custom modal styles removed to allow Bootstrap 5 to handle modals correctly */
     </style>
 </head>
 
 <body style="background-color: #f8f9fa;">
-    <!-- Top Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <!-- Modern Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">FYP Management System</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-white" href="#" id="navbarDropdown" role="button"
-                            data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> {{ current_user.first_name }}
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="bi bi-person"></i>
-                                    Profile</a></li>
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i
-                                        class="bi bi-box-arrow-right"></i> Logout</a></li>
-                        </ul>
-                    </li>
-                </ul>
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-mortarboard me-2"></i>
+                <span>FYP Faculty</span>
+            </a>
+            <div class="d-flex ms-auto">
+                <div class="dropdown">
+                    <button class="btn btn-light btn-sm py-2 px-3" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle me-2"></i>
+                        <span>{{ current_user.first_name }}</span>
+                        <i class="bi bi-chevron-down ms-2"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('profile') }}">
+                            <i class="bi bi-person me-2"></i>Profile
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                            <i class="bi bi-box-arrow-right me-2"></i>Logout
+                        </a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </nav>
 
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="welcome-text">Welcome back, {{ current_user.first_name }}! 👋</h1>
+                    <p class="subtitle-text">Manage your projects and student groups</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-lg-2 p-0 bg-white sidebar">
+        <div class="row g-0">
+            <!-- Modern Sidebar -->
+            <div class="col-lg-2 p-0 sidebar">
                 <div class="d-flex flex-column flex-shrink-0 p-3">
-                    <ul class="nav nav-pills flex-column">
+                    <ul class="nav nav-pills flex-column gap-2">
                         <li class="nav-item">
                             <a href="#dashboard" class="nav-link active section-link" data-section="dashboard">
-                                <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                                <i class="bi bi-grid me-3"></i>Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
                             <a href="#projects" class="nav-link section-link" data-section="projects">
-                                <i class="bi bi-kanban me-2"></i> Projects
+                                <i class="bi bi-kanban me-3"></i>Projects
                             </a>
                         </li>
                         <li class="nav-item">
                             <a href="#assigned-groups" class="nav-link section-link" data-section="assigned-groups">
-                                <i class="bi bi-people-fill me-2"></i> Assigned Groups
+                                <i class="bi bi-people-fill me-3"></i>Assigned Groups
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#evaluation-history" class="nav-link section-link"
-                                data-section="evaluation-history">
-                                <i class="bi bi-clock-history me-2"></i> Evaluation History
+                            <a href="#evaluation-history" class="nav-link section-link" data-section="evaluation-history">
+                                <i class="bi bi-clock-history me-3"></i>Evaluation History
                             </a>
                         </li>
                         <li class="nav-item">
                             <a href="#students" class="nav-link section-link" data-section="students">
-                                <i class="bi bi-people me-2"></i> Students
+                                <i class="bi bi-people me-3"></i>Students
                             </a>
                         </li>
                         <li class="nav-item">
                             <a href="#evaluations" class="nav-link section-link" data-section="evaluations">
-                                <i class="bi bi-clipboard-check me-2"></i> Evaluations
+                                <i class="bi bi-clipboard-check me-3"></i>Evaluations
                             </a>
                         </li>
                         <li class="nav-item">
                             <a href="#schedule" class="nav-link section-link" data-section="schedule">
-                                <i class="bi bi-calendar-event me-2"></i> Schedule
+                                <i class="bi bi-calendar-event me-3"></i>Schedule
                             </a>
                         </li>
                         <li class="nav-item">
                             <a href="#reports" class="nav-link section-link" data-section="reports">
-                                <i class="bi bi-file-earmark-text me-2"></i> Reports
+                                <i class="bi bi-file-earmark-text me-3"></i>Reports
                             </a>
                         </li>
                     </ul>
@@ -164,162 +132,69 @@
             </div>
 
             <!-- Main Content Area -->
-            <div class="col-lg-10 p-4">
-                <!-- Welcome Alert -->
-                <div class="alert alert-primary" role="alert">
-                    <i class="bi bi-info-circle me-2"></i> Welcome to your Faculty Dashboard, {{ current_user.first_name
-                    }}.
-                </div>
+            <div class="col-lg-10 main-content p-4">
 
-                <!-- Teacher Functionality Quick Access -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card h-100 border-0 shadow-sm">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h5 class="card-title">Assigned Project Groups</h5>
-                                    <span class="badge bg-primary rounded-pill">{{ assigned_groups_count }}</span>
-                                </div>
-                                <p class="card-text">View all student groups assigned to you for evaluation and provide
-                                    feedback.</p>
-                                <div class="d-flex justify-content-between">
-                                    <a href="#assigned-groups" class="btn btn-primary section-link"
-                                        data-section="assigned-groups">
-                                        <i class="bi bi-people-fill me-1"></i>View Assigned Groups
-                                    </a>
-                                    {% if pending_evaluations_count > 0 %}
-                                    <span class="badge bg-danger">{{ pending_evaluations_count }} pending</span>
-                                    {% endif %}
-                                </div>
-                            </div>
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <i class="bi {% if category == 'success' %}bi-check-circle{% elif category == 'danger' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100 border-0 shadow-sm">
-                            <div class="card-body">
-                                <h5 class="card-title mb-3">Evaluation History</h5>
-                                <p class="card-text">Access your history of project evaluations, feedback, and project
-                                    status updates.</p>
-                                <a href="#evaluation-history" class="btn btn-outline-primary section-link"
-                                    data-section="evaluation-history">
-                                    <i class="bi bi-clock-history me-1"></i>View Evaluation History
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
 
                 <!-- Dashboard Section -->
                 <div id="dashboard" class="content-section active">
-                    <h2 class="mb-4">Dashboard Overview</h2>
-                    <div class="row">
-                        <div class="col-md-4 mb-4">
-                            <div class="card dashboard-card border-primary h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title text-primary">
-                                        <i class="bi bi-kanban me-2"></i> Project Supervision
-                                    </h5>
-                                    <h2 class="display-4 text-center mb-3">{{ supervised_groups|length }}</h2>
-                                    <p class="card-text">Active projects under your supervision</p>
-                                    <div class="progress mt-2">
-                                        <div class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
-                                    </div>
-                                    <small class="text-muted mt-2 d-block">0% projects on schedule</small>
-                                </div>
-                                <div class="card-footer bg-transparent border-0">
-                                    <a href="#projects" class="btn btn-sm btn-outline-primary section-link"
-                                        data-section="projects">View Projects</a>
-                                </div>
-                            </div>
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card primary">
+                            <i class="bi bi-kanban"></i>
+                            <div class="stat-value">{{ supervised_groups|length if supervised_groups is defined else groups|length if groups is defined else 0 }}</div>
+                            <div class="stat-label">Projects Supervised</div>
                         </div>
-                        <div class="col-md-4 mb-4">
-                            <div class="card dashboard-card border-success h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title text-success">
-                                        <i class="bi bi-calendar-check me-2"></i> Upcoming Events
-                                    </h5>
-                                    <ul class="list-group list-group-flush">
-                                        <li class="list-group-item px-0">No upcoming events</li>
-                                    </ul>
-                                </div>
-                                <div class="card-footer bg-transparent border-0">
-                                    <a href="#schedule" class="btn btn-sm btn-outline-success section-link"
-                                        data-section="schedule">View Schedule</a>
-                                </div>
-                            </div>
+                        <div class="stat-card success">
+                            <i class="bi bi-people-fill"></i>
+                            <div class="stat-value">{{ assigned_groups_count }}</div>
+                            <div class="stat-label">Assigned Groups</div>
                         </div>
-                        <div class="col-md-4 mb-4">
-                            <div class="card dashboard-card border-info h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title text-info">
-                                        <i class="bi bi-people me-2"></i> Students
-                                    </h5>
-                                    <h2 class="display-4 text-center">0</h2>
-                                    <p class="card-text">Students in your project groups</p>
-                                    <div class="d-flex justify-content-between mt-3">
-                                        <span><i class="bi bi-circle-fill text-success me-1"></i> On Track: 0</span>
-                                        <span><i class="bi bi-circle-fill text-warning me-1"></i> At Risk: 0</span>
-                                        <span><i class="bi bi-circle-fill text-danger me-1"></i> Delayed: 0</span>
-                                    </div>
-                                </div>
-                                <div class="card-footer bg-transparent border-0">
-                                    <a href="#students" class="btn btn-sm btn-outline-info section-link"
-                                        data-section="students">View Students</a>
-                                </div>
-                            </div>
+                        <div class="stat-card warning">
+                            <i class="bi bi-clipboard-check"></i>
+                            <div class="stat-value">{{ pending_evaluations_count }}</div>
+                            <div class="stat-label">Pending Evaluations</div>
+                        </div>
+                        <div class="stat-card danger">
+                            <i class="bi bi-chat-square-text"></i>
+                            <div class="stat-value">{{ remarks|length if remarks is defined else 0 }}</div>
+                            <div class="stat-label">Total Remarks</div>
                         </div>
                     </div>
 
-                    <div class="row mt-2">
-                        <div class="col-md-8">
-                            <div class="card dashboard-card">
-                                <div class="card-header bg-white">
-                                    <h5 class="mb-0"><i class="bi bi-bell me-2"></i> Recent Notifications</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="alert alert-info" role="alert">
-                                        <i class="bi bi-info-circle"></i> No notifications at this time.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card dashboard-card">
-                                <div class="card-header bg-white">
-                                    <h5 class="mb-0"><i class="bi bi-check2-square me-2"></i> Tasks</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="alert alert-info" role="alert">
-                                        <i class="bi bi-info-circle"></i> No tasks at this time.
-                                    </div>
-                                </div>
-                                <div class="card-footer bg-transparent">
-                                    <button class="btn btn-sm btn-primary w-100">
-                                        <i class="bi bi-plus-circle"></i> Add New Task
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <div class="card dashboard-card">
-                                <div class="card-header bg-white">
-                                    <h5 class="mb-0"><i class="bi bi-calendar3 me-2"></i> Upcoming Meetings</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="alert alert-info" role="alert">
-                                        <i class="bi bi-info-circle"></i> No upcoming meetings scheduled.
-                                    </div>
-                                </div>
-                                <div class="card-footer bg-transparent text-end">
-                                    <button class="btn btn-sm btn-primary">
-                                        <i class="bi bi-plus-circle"></i> Schedule New Meeting
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <a href="#" class="quick-action-card section-link" data-section="projects">
+                            <i class="bi bi-kanban"></i>
+                            <h5>Projects</h5>
+                            <p>View supervised projects</p>
+                        </a>
+                        <a href="#" class="quick-action-card section-link" data-section="assigned-groups">
+                            <i class="bi bi-people-fill"></i>
+                            <h5>Assigned Groups</h5>
+                            <p>Evaluate student groups</p>
+                        </a>
+                        <a href="#" class="quick-action-card section-link" data-section="evaluations">
+                            <i class="bi bi-clipboard-check"></i>
+                            <h5>Evaluations</h5>
+                            <p>Manage evaluations</p>
+                        </a>
+                        <a href="#" class="quick-action-card section-link" data-section="schedule">
+                            <i class="bi bi-calendar-event"></i>
+                            <h5>Schedule</h5>
+                            <p>View your schedule</p>
+                        </a>
                     </div>
                 </div>
 
@@ -410,6 +285,8 @@
                                                             aria-label="Close"></button>
                                                     </div>
                                                     <form action="{{ url_for('add_remark') }}" method="post">
+                                                        <input type="hidden" name="csrf_token"
+                                                            value="{{ csrf_token() }}">
                                                         <div class="modal-body">
                                                             <input type="hidden" name="group_id" value="{{ group.id }}">
                                                             <div class="mb-3">
@@ -818,852 +695,554 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
 
-                            <!-- Evaluations Section -->
-                            <div id="evaluations" class="content-section">
-                                <h2 class="mb-4">Project Evaluations</h2>
+                <!-- Evaluations Section -->
+                <div id="evaluations" class="content-section">
+                    <h2 class="mb-4">Project Evaluations</h2>
 
-                                <div class="row mb-4">
-                                    <div class="col-md-6">
-                                        <div class="card dashboard-card h-100">
-                                            <div
-                                                class="card-header bg-white d-flex justify-content-between align-items-center">
-                                                <h5 class="mb-0">Upcoming Evaluations</h5>
-                                                <span class="badge bg-warning">7 Pending</span>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="list-group">
-                                                    <div class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h6 class="mb-1">Progress Report Evaluations</h6>
-                                                            <small class="text-danger">Due Oct 20</small>
-                                                        </div>
-                                                        <p class="mb-1">Evaluate progress reports from all 7 supervised
-                                                            groups</p>
-                                                        <div class="d-flex align-items-center mt-2">
-                                                            <div class="progress flex-grow-1" style="height: 8px;">
-                                                                <div class="progress-bar bg-danger" role="progressbar"
-                                                                    style="width: 0%"></div>
-                                                            </div>
-                                                            <span class="ms-2 small">0/7</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h6 class="mb-1">Midterm Presentations</h6>
-                                                            <small class="text-warning">Oct 25-27</small>
-                                                        </div>
-                                                        <p class="mb-1">Evaluate midterm presentations from assigned
-                                                            groups</p>
-                                                        <div class="d-flex align-items-center mt-2">
-                                                            <div class="progress flex-grow-1" style="height: 8px;">
-                                                                <div class="progress-bar bg-warning" role="progressbar"
-                                                                    style="width: 0%"></div>
-                                                            </div>
-                                                            <span class="ms-2 small">0/7</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="card-footer bg-transparent">
-                                                <button class="btn btn-primary w-100">Start Evaluation</button>
-                                            </div>
-                                        </div>
+                    <!-- Evaluation Summary Cards -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-people text-primary" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ groups|length }}</h3>
+                                    <p class="text-muted mb-0">Supervised Groups</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-hourglass-split text-warning" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ pending_evaluations_count }}</h3>
+                                    <p class="text-muted mb-0">Pending Evaluations</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                                    {% set completed_evals = all_project_statuses.values()|selectattr('status', 'ne', 'Pending')|list|length %}
+                                    <h3 class="mt-2">{{ completed_evals }}</h3>
+                                    <p class="text-muted mb-0">Completed Evaluations</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-flag text-info" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ all_milestones|length }}</h3>
+                                    <p class="text-muted mb-0">Total Milestones</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Group Progress Overview -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Group Progress Overview</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if groups %}
+                            {% for group in groups %}
+                            {% set pd = all_project_details.get(group.id) %}
+                            {% set ps = all_project_statuses.get(group.id) %}
+                            {% set group_milestones = all_milestones|selectattr('group_id', 'eq', group.id)|list %}
+                            {% set completed_ms = group_milestones|selectattr('status', 'eq', 'Completed')|list|length %}
+                            {% set progress = pd.progress if pd and pd.progress else (((completed_ms / group_milestones|length) * 100)|int if group_milestones|length > 0 else 0) %}
+                            <div class="mb-4 p-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <h6 class="mb-0">{{ group.group_id }} - {{ group.project_title or 'Untitled Project' }}</h6>
+                                        <small class="text-muted">
+                                            {% if ps %}
+                                            Status: <span class="badge 
+                                                {% if ps.status == 'Accepted' %}bg-success
+                                                {% elif ps.status == 'Conditionally Accepted' %}bg-warning text-dark
+                                                {% elif ps.status == 'Deferred' %}bg-danger
+                                                {% else %}bg-secondary{% endif %}">{{ ps.status }}</span>
+                                            {% else %}
+                                            Status: <span class="badge bg-secondary">Not Evaluated</span>
+                                            {% endif %}
+                                        </small>
                                     </div>
+                                    <span class="badge bg-primary">{{ progress }}%</span>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar {% if progress >= 75 %}bg-success{% elif progress >= 50 %}bg-info{% elif progress >= 25 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                         role="progressbar" style="width: {{ progress }}%"></div>
+                                </div>
+                                <div class="d-flex justify-content-between mt-2">
+                                    <small class="text-muted">{{ completed_ms }}/{{ group_milestones|length }} milestones completed</small>
+                                    <small class="text-muted">
+                                        {% set group_vivas = all_vivas|selectattr('group_id', 'eq', group.id)|list %}
+                                        {% if group_vivas %}
+                                        Next viva: {{ group_vivas[0].scheduled_date.strftime('%b %d, %Y') if group_vivas[0].scheduled_date else 'TBD' }}
+                                        {% else %}
+                                        No viva scheduled
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>No supervised groups found.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
 
-                                    <div class="col-md-6">
-                                        <div class="card dashboard-card h-100">
-                                            <div
-                                                class="card-header bg-white d-flex justify-content-between align-items-center">
-                                                <h5 class="mb-0">Completed Evaluations</h5>
-                                                <span class="badge bg-success">14 Complete</span>
+                    <!-- Milestones Table -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>All Milestones</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if all_milestones %}
+                            <div class="table-responsive">
+                                <table class="table table-hover m-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Group</th>
+                                            <th>Milestone</th>
+                                            <th>Due Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for milestone in all_milestones %}
+                                        {% set ms_group = groups|selectattr('id', 'eq', milestone.group_id)|first %}
+                                        <tr>
+                                            <td>{{ ms_group.group_id if ms_group else 'Unknown' }}</td>
+                                            <td>{{ milestone.title }}</td>
+                                            <td>{{ milestone.due_date.strftime('%b %d, %Y') if milestone.due_date else 'N/A' }}</td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if milestone.status == 'Completed' %}bg-success
+                                                    {% elif milestone.status == 'In Progress' %}bg-primary
+                                                    {% elif milestone.status == 'Overdue' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ milestone.status }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="p-4">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>No milestones have been set yet.
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Viva Schedule -->
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Viva Schedule</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if all_vivas %}
+                            <div class="table-responsive">
+                                <table class="table table-hover m-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Group</th>
+                                            <th>Date</th>
+                                            <th>Time</th>
+                                            <th>Venue</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for viva in all_vivas %}
+                                        {% set v_group = groups|selectattr('id', 'eq', viva.group_id)|first %}
+                                        <tr>
+                                            <td>{{ v_group.group_id if v_group else 'Unknown' }}</td>
+                                            <td>{{ viva.scheduled_date.strftime('%b %d, %Y') if viva.scheduled_date else 'TBD' }}</td>
+                                            <td>{{ viva.scheduled_time if viva.scheduled_time else 'TBD' }}</td>
+                                            <td>{{ viva.venue if viva.venue else 'TBD' }}</td>
+                                            <td>
+                                                <span class="badge {% if viva.status == 'Completed' %}bg-success{% elif viva.status == 'Scheduled' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                                    {{ viva.status if viva.status else 'Pending' }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="p-4">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>No viva sessions scheduled yet.
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule Section -->
+                <div id="schedule" class="content-section">
+                    <h2 class="mb-4">Schedule Management</h2>
+
+                    <div class="row mb-4">
+                        <!-- Today's Schedule -->
+                        <div class="col-md-6">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Today's Schedule</h5>
+                                    <span class="badge bg-primary">{{ today }}</span>
+                                </div>
+                                <div class="card-body">
+                                    {% if today_schedules %}
+                                    <div class="list-group">
+                                        {% for schedule in today_schedules %}
+                                        <div class="list-group-item">
+                                            <div class="d-flex justify-content-between">
+                                                <h6 class="mb-1">{{ schedule.subject or schedule.class_name }}</h6>
+                                                <small class="text-primary">{{ schedule.time }}</small>
                                             </div>
-                                            <div class="card-body">
-                                                <div class="list-group">
-                                                    <div class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h6 class="mb-1">Project Proposals</h6>
-                                                            <small class="text-success">Completed Sep 15</small>
-                                                        </div>
-                                                        <p class="mb-1">Project proposal evaluations for 7 groups</p>
-                                                        <div class="d-flex align-items-center mt-2">
-                                                            <div class="progress flex-grow-1" style="height: 8px;">
-                                                                <div class="progress-bar bg-success" role="progressbar"
-                                                                    style="width: 100%"></div>
-                                                            </div>
-                                                            <span class="ms-2 small">7/7</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h6 class="mb-1">Design Documents</h6>
-                                                            <small class="text-success">Completed Oct 1</small>
-                                                        </div>
-                                                        <p class="mb-1">Design document evaluations for 7 groups</p>
-                                                        <div class="d-flex align-items-center mt-2">
-                                                            <div class="progress flex-grow-1" style="height: 8px;">
-                                                                <div class="progress-bar bg-success" role="progressbar"
-                                                                    style="width: 100%"></div>
-                                                            </div>
-                                                            <span class="ms-2 small">7/7</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="card-footer bg-transparent">
-                                                <button class="btn btn-outline-primary w-100">View Past
-                                                    Evaluations</button>
-                                            </div>
+                                            <p class="mb-0 small text-muted">
+                                                <i class="bi bi-geo-alt me-1"></i>{{ schedule.room }}
+                                                {% if schedule.teacher %} | <i class="bi bi-person me-1"></i>{{ schedule.teacher }}{% endif %}
+                                            </p>
                                         </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-info mb-0">
+                                        <i class="bi bi-info-circle me-2"></i>No classes scheduled for today.
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tomorrow's Schedule -->
+                        <div class="col-md-6">
+                            <div class="card dashboard-card h-100">
+                                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="bi bi-calendar-plus me-2"></i>Tomorrow's Schedule</h5>
+                                    <span class="badge bg-secondary">Tomorrow</span>
+                                </div>
+                                <div class="card-body">
+                                    {% if tomorrow_schedules %}
+                                    <div class="list-group">
+                                        {% for schedule in tomorrow_schedules %}
+                                        <div class="list-group-item">
+                                            <div class="d-flex justify-content-between">
+                                                <h6 class="mb-1">{{ schedule.subject or schedule.class_name }}</h6>
+                                                <small class="text-muted">{{ schedule.time }}</small>
+                                            </div>
+                                            <p class="mb-0 small text-muted">
+                                                <i class="bi bi-geo-alt me-1"></i>{{ schedule.room }}
+                                                {% if schedule.teacher %} | <i class="bi bi-person me-1"></i>{{ schedule.teacher }}{% endif %}
+                                            </p>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-info mb-0">
+                                        <i class="bi bi-info-circle me-2"></i>No classes scheduled for tomorrow.
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Viva Sessions Schedule -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-mortarboard me-2"></i>Viva Sessions</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if all_vivas %}
+                            <div class="table-responsive">
+                                <table class="table table-hover m-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Group</th>
+                                            <th>Project</th>
+                                            <th>Date</th>
+                                            <th>Time</th>
+                                            <th>Venue</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for viva in all_vivas %}
+                                        {% set v_group = groups|selectattr('id', 'eq', viva.group_id)|first %}
+                                        <tr>
+                                            <td>{{ v_group.group_id if v_group else 'Unknown' }}</td>
+                                            <td>{{ v_group.project_title if v_group else 'N/A' }}</td>
+                                            <td>{{ viva.scheduled_date.strftime('%b %d, %Y') if viva.scheduled_date else 'TBD' }}</td>
+                                            <td>{{ viva.scheduled_time if viva.scheduled_time else 'TBD' }}</td>
+                                            <td>{{ viva.venue if viva.venue else 'TBD' }}</td>
+                                            <td>
+                                                <span class="badge {% if viva.status == 'Completed' %}bg-success{% elif viva.status == 'Scheduled' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                                    {{ viva.status if viva.status else 'Pending' }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="p-4">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>No viva sessions scheduled yet.
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Upcoming Milestones/Deadlines -->
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-flag me-2"></i>Upcoming Milestones & Deadlines</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            {% set upcoming = all_milestones|rejectattr('status', 'eq', 'Completed')|list %}
+                            {% if upcoming %}
+                            <div class="table-responsive">
+                                <table class="table table-hover m-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Group</th>
+                                            <th>Milestone</th>
+                                            <th>Due Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for milestone in upcoming[:10] %}
+                                        {% set ms_group = groups|selectattr('id', 'eq', milestone.group_id)|first %}
+                                        <tr>
+                                            <td>{{ ms_group.group_id if ms_group else 'Unknown' }}</td>
+                                            <td>{{ milestone.title }}</td>
+                                            <td>{{ milestone.due_date.strftime('%b %d, %Y') if milestone.due_date else 'N/A' }}</td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if milestone.status == 'In Progress' %}bg-primary
+                                                    {% elif milestone.status == 'Overdue' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ milestone.status }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="p-4">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>No upcoming milestones.
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports Section -->
+                <div id="reports" class="content-section">
+                    <h2 class="mb-4">Reports & Documentation</h2>
+
+                    <!-- Summary Stats -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-people text-primary" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ groups|length }}</h3>
+                                    <p class="text-muted mb-0">Supervised Groups</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-chat-dots text-success" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ remarks|length }}</h3>
+                                    <p class="text-muted mb-0">Remarks Sent</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-flag text-warning" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ all_milestones|length }}</h3>
+                                    <p class="text-muted mb-0">Total Milestones</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-mortarboard text-info" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ all_vivas|length }}</h3>
+                                    <p class="text-muted mb-0">Viva Sessions</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Group-wise Project Report -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-table me-2"></i>Group-wise Project Report</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if groups %}
+                            <div class="table-responsive">
+                                <table class="table table-hover m-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Group</th>
+                                            <th>Project Title</th>
+                                            <th>Progress</th>
+                                            <th>Milestones</th>
+                                            <th>Evaluation Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for group in groups %}
+                                        {% set pd = all_project_details.get(group.id) %}
+                                        {% set ps = all_project_statuses.get(group.id) %}
+                                        {% set group_milestones = all_milestones|selectattr('group_id', 'eq', group.id)|list %}
+                                        {% set completed_ms = group_milestones|selectattr('status', 'eq', 'Completed')|list|length %}
+                                        {% set progress = pd.progress if pd and pd.progress else (((completed_ms / group_milestones|length) * 100)|int if group_milestones|length > 0 else 0) %}
+                                        <tr>
+                                            <td><strong>{{ group.group_id }}</strong></td>
+                                            <td>{{ group.project_title or 'Untitled' }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="progress flex-grow-1 me-2" style="height: 8px; min-width: 60px;">
+                                                        <div class="progress-bar {% if progress >= 75 %}bg-success{% elif progress >= 50 %}bg-info{% elif progress >= 25 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                                             role="progressbar" style="width: {{ progress }}%"></div>
+                                                    </div>
+                                                    <small>{{ progress }}%</small>
+                                                </div>
+                                            </td>
+                                            <td>{{ completed_ms }}/{{ group_milestones|length }}</td>
+                                            <td>
+                                                {% if ps %}
+                                                <span class="badge 
+                                                    {% if ps.status == 'Accepted' %}bg-success
+                                                    {% elif ps.status == 'Conditionally Accepted' %}bg-warning text-dark
+                                                    {% elif ps.status == 'Deferred' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">{{ ps.status }}</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">Not Evaluated</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="p-4">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>No supervised groups found.
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Remarks Activity Log -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-chat-left-text me-2"></i>Recent Remarks Activity</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if remarks %}
+                            <div class="list-group">
+                                {% for remark in remarks[:10] %}
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <h6 class="mb-1">{{ remark.group_id }} - {{ remark.project_title or 'N/A' }}</h6>
+                                        <small class="text-muted">{{ remark.timestamp.strftime('%b %d, %Y %I:%M %p') if remark.timestamp else 'N/A' }}</small>
+                                    </div>
+                                    <p class="mb-1 small">{{ remark.content }}</p>
+                                    <small class="text-muted">By: {{ remark.teacher_name }}</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>No remarks have been sent yet.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Evaluation Summary -->
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Evaluation Summary</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if all_project_statuses %}
+                            <div class="row">
+                                {% set accepted = all_project_statuses.values()|selectattr('status', 'eq', 'Accepted')|list|length %}
+                                {% set conditional = all_project_statuses.values()|selectattr('status', 'eq', 'Conditionally Accepted')|list|length %}
+                                {% set deferred = all_project_statuses.values()|selectattr('status', 'eq', 'Deferred')|list|length %}
+                                {% set pending = all_project_statuses.values()|selectattr('status', 'eq', 'Pending')|list|length %}
+                                <div class="col-md-3 text-center">
+                                    <div class="p-3 border rounded">
+                                        <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                                        <h4 class="mt-2">{{ accepted }}</h4>
+                                        <p class="text-muted mb-0">Accepted</p>
                                     </div>
                                 </div>
-
-                                <div class="card mb-4">
-                                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                        <h5 class="mb-0">Evaluation Templates</h5>
-                                        <button class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-plus"></i> Create Template
-                                        </button>
-                                    </div>
-                                    <div class="card-body p-0">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover m-0">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th>Template Name</th>
-                                                        <th>Type</th>
-                                                        <th>Description</th>
-                                                        <th>Created</th>
-                                                        <th>Last Used</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr>
-                                                        <td>Progress Report Rubric</td>
-                                                        <td>Document</td>
-                                                        <td>Evaluation criteria for progress reports</td>
-                                                        <td>Sep 1, 2023</td>
-                                                        <td>Oct 5, 2023</td>
-                                                        <td>
-                                                            <button class="btn btn-sm btn-outline-primary me-1"
-                                                                title="Edit">
-                                                                <i class="bi bi-pencil"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-success me-1"
-                                                                title="Use">
-                                                                <i class="bi bi-check2-circle"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-secondary"
-                                                                title="Download">
-                                                                <i class="bi bi-download"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>Midterm Presentation Rubric</td>
-                                                        <td>Presentation</td>
-                                                        <td>Evaluation criteria for midterm presentations</td>
-                                                        <td>Sep 1, 2023</td>
-                                                        <td>--</td>
-                                                        <td>
-                                                            <button class="btn btn-sm btn-outline-primary me-1"
-                                                                title="Edit">
-                                                                <i class="bi bi-pencil"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-success me-1"
-                                                                title="Use">
-                                                                <i class="bi bi-check2-circle"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-secondary"
-                                                                title="Download">
-                                                                <i class="bi bi-download"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>Final Report Rubric</td>
-                                                        <td>Document</td>
-                                                        <td>Evaluation criteria for final reports</td>
-                                                        <td>Sep 1, 2023</td>
-                                                        <td>--</td>
-                                                        <td>
-                                                            <button class="btn btn-sm btn-outline-primary me-1"
-                                                                title="Edit">
-                                                                <i class="bi bi-pencil"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-success me-1"
-                                                                title="Use">
-                                                                <i class="bi bi-check2-circle"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-secondary"
-                                                                title="Download">
-                                                                <i class="bi bi-download"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>Final Presentation Rubric</td>
-                                                        <td>Presentation</td>
-                                                        <td>Evaluation criteria for final presentations</td>
-                                                        <td>Sep 1, 2023</td>
-                                                        <td>--</td>
-                                                        <td>
-                                                            <button class="btn btn-sm btn-outline-primary me-1"
-                                                                title="Edit">
-                                                                <i class="bi bi-pencil"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-success me-1"
-                                                                title="Use">
-                                                                <i class="bi bi-check2-circle"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-secondary"
-                                                                title="Download">
-                                                                <i class="bi bi-download"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                <div class="col-md-3 text-center">
+                                    <div class="p-3 border rounded">
+                                        <i class="bi bi-exclamation-circle text-warning" style="font-size: 2rem;"></i>
+                                        <h4 class="mt-2">{{ conditional }}</h4>
+                                        <p class="text-muted mb-0">Conditional</p>
                                     </div>
                                 </div>
-
-                                <div class="card">
-                                    <div class="card-header bg-white">
-                                        <h5 class="mb-0">Evaluation Statistics</h5>
+                                <div class="col-md-3 text-center">
+                                    <div class="p-3 border rounded">
+                                        <i class="bi bi-x-circle text-danger" style="font-size: 2rem;"></i>
+                                        <h4 class="mt-2">{{ deferred }}</h4>
+                                        <p class="text-muted mb-0">Deferred</p>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <h6>Project Proposal Scores</h6>
-                                                <div class="d-flex align-items-center mb-2">
-                                                    <div class="progress flex-grow-1" style="height: 20px;">
-                                                        <div class="progress-bar bg-success" role="progressbar"
-                                                            style="width: 71%"></div>
-                                                    </div>
-                                                    <span class="ms-2">71%</span>
-                                                </div>
-                                                <p class="text-muted small">Average score across all supervised groups
-                                                </p>
-
-                                                <div class="mt-4">
-                                                    <h6>Design Document Scores</h6>
-                                                    <div class="d-flex align-items-center mb-2">
-                                                        <div class="progress flex-grow-1" style="height: 20px;">
-                                                            <div class="progress-bar bg-success" role="progressbar"
-                                                                style="width: 68%"></div>
-                                                        </div>
-                                                        <span class="ms-2">68%</span>
-                                                    </div>
-                                                    <p class="text-muted small">Average score across all supervised
-                                                        groups</p>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <h6>Score Distribution</h6>
-                                                <div class="mt-3">
-                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                        <div><i class="bi bi-circle-fill text-success me-2"></i> A
-                                                            (80-100%)</div>
-                                                        <div>3 groups</div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                        <div><i class="bi bi-circle-fill text-primary me-2"></i> B
-                                                            (70-79%)</div>
-                                                        <div>2 groups</div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                        <div><i class="bi bi-circle-fill text-warning me-2"></i> C
-                                                            (60-69%)</div>
-                                                        <div>1 group</div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                        <div><i class="bi bi-circle-fill text-danger me-2"></i> D (Below
-                                                            60%)</div>
-                                                        <div>1 group</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                </div>
+                                <div class="col-md-3 text-center">
+                                    <div class="p-3 border rounded">
+                                        <i class="bi bi-hourglass-split text-secondary" style="font-size: 2rem;"></i>
+                                        <h4 class="mt-2">{{ pending }}</h4>
+                                        <p class="text-muted mb-0">Pending</p>
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Schedule Section -->
-                            <div id="schedule" class="content-section">
-                                <h2 class="mb-4">Schedule Management</h2>
-
-                                <div class="row mb-4">
-                                    <div class="col-md-9">
-                                        <div class="card">
-                                            <div
-                                                class="card-header bg-white d-flex justify-content-between align-items-center">
-                                                <h5 class="mb-0">October 2023</h5>
-                                                <div>
-                                                    <button class="btn btn-sm btn-outline-secondary me-1">
-                                                        <i class="bi bi-chevron-left"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-primary">Today</button>
-                                                    <button class="btn btn-sm btn-outline-secondary ms-1">
-                                                        <i class="bi bi-chevron-right"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="card-body p-0">
-                                                <div class="table-responsive">
-                                                    <table class="table table-bordered m-0">
-                                                        <thead>
-                                                            <tr class="text-center">
-                                                                <th style="width: 14%">Sunday</th>
-                                                                <th style="width: 14%">Monday</th>
-                                                                <th style="width: 14%">Tuesday</th>
-                                                                <th style="width: 14%">Wednesday</th>
-                                                                <th style="width: 14%">Thursday</th>
-                                                                <th style="width: 14%">Friday</th>
-                                                                <th style="width: 14%">Saturday</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <tr style="height: 100px;">
-                                                                <td class="text-muted small">1</td>
-                                                                <td class="text-muted small">2</td>
-                                                                <td class="text-muted small">3</td>
-                                                                <td class="text-muted small">4</td>
-                                                                <td class="text-muted small">5</td>
-                                                                <td class="text-muted small">6</td>
-                                                                <td class="text-muted small">7</td>
-                                                            </tr>
-                                                            <tr style="height: 100px;">
-                                                                <td class="text-muted small">8</td>
-                                                                <td class="text-muted small">9</td>
-                                                                <td class="text-muted small">10</td>
-                                                                <td class="text-muted small">11</td>
-                                                                <td class="text-muted small bg-light">12
-                                                                    <div
-                                                                        class="mt-1 p-1 rounded bg-primary text-white small">
-                                                                        9:30 AM - G23 Meeting
-                                                                    </div>
-                                                                </td>
-                                                                <td class="text-muted small">13
-                                                                    <div
-                                                                        class="mt-1 p-1 rounded bg-info text-white small">
-                                                                        2:00 PM - G17 Meeting
-                                                                    </div>
-                                                                </td>
-                                                                <td class="text-muted small">14</td>
-                                                            </tr>
-                                                            <tr style="height: 100px;">
-                                                                <td class="text-muted small">15
-                                                                    <div
-                                                                        class="mt-1 p-1 rounded bg-danger text-white small">
-                                                                        Progress Reports Due
-                                                                    </div>
-                                                                </td>
-                                                                <td class="text-muted small">16
-                                                                    <div
-                                                                        class="mt-1 p-1 rounded bg-primary text-white small">
-                                                                        11:00 AM - G19 Meeting
-                                                                    </div>
-                                                                </td>
-                                                                <td class="text-muted small">17</td>
-                                                                <td class="text-muted small">18
-                                                                    <div
-                                                                        class="mt-1 p-1 rounded bg-danger text-white small">
-                                                                        Review Deadline
-                                                                    </div>
-                                                                </td>
-                                                                <td class="text-muted small">19</td>
-                                                                <td class="text-muted small">20</td>
-                                                                <td class="text-muted small">21</td>
-                                                            </tr>
-                                                            <tr style="height: 100px;">
-                                                                <td class="text-muted small">22</td>
-                                                                <td class="text-muted small">23</td>
-                                                                <td class="text-muted small">24</td>
-                                                                <td class="text-muted small">25
-                                                                    <div
-                                                                        class="mt-1 p-1 rounded bg-warning text-white small">
-                                                                        Midterm Presentations Day 1
-                                                                    </div>
-                                                                </td>
-                                                                <td class="text-muted small">26
-                                                                    <div
-                                                                        class="mt-1 p-1 rounded bg-warning text-white small">
-                                                                        Midterm Presentations Day 2
-                                                                    </div>
-                                                                </td>
-                                                                <td class="text-muted small">27
-                                                                    <div
-                                                                        class="mt-1 p-1 rounded bg-warning text-white small">
-                                                                        Midterm Presentations Day 3
-                                                                    </div>
-                                                                </td>
-                                                                <td class="text-muted small">28</td>
-                                                            </tr>
-                                                            <tr style="height: 100px;">
-                                                                <td class="text-muted small">29</td>
-                                                                <td class="text-muted small">30</td>
-                                                                <td class="text-muted small">31</td>
-                                                                <td class="text-muted small"></td>
-                                                                <td class="text-muted small"></td>
-                                                                <td class="text-muted small"></td>
-                                                                <td class="text-muted small"></td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card mb-4">
-                                            <div class="card-header bg-white">
-                                                <h5 class="mb-0">Add Event</h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <form>
-                                                    <div class="mb-3">
-                                                        <label for="eventTitle" class="form-label">Event Title</label>
-                                                        <input type="text" class="form-control" id="eventTitle">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="eventDate" class="form-label">Date</label>
-                                                        <input type="date" class="form-control" id="eventDate">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="eventTime" class="form-label">Time</label>
-                                                        <input type="time" class="form-control" id="eventTime">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="eventType" class="form-label">Event Type</label>
-                                                        <select class="form-select" id="eventType">
-                                                            <option>Meeting</option>
-                                                            <option>Deadline</option>
-                                                            <option>Presentation</option>
-                                                            <option>Other</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label for="eventDescription" class="form-label">Description
-                                                            (Optional)</label>
-                                                        <textarea class="form-control" id="eventDescription"
-                                                            rows="3"></textarea>
-                                                    </div>
-                                                    <button type="submit" class="btn btn-primary w-100">Add
-                                                        Event</button>
-                                                </form>
-                                            </div>
-                                        </div>
-
-                                        <div class="card">
-                                            <div class="card-header bg-white">
-                                                <h5 class="mb-0">Upcoming Events</h5>
-                                            </div>
-                                            <div class="card-body p-0">
-                                                <ul class="list-group list-group-flush">
-                                                    <li class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <span class="badge bg-primary">Meeting</span>
-                                                            <small>Oct 12</small>
-                                                        </div>
-                                                        <p class="mb-0 mt-1">G23 Project Meeting</p>
-                                                        <small class="text-muted">9:30 AM - Room 302</small>
-                                                    </li>
-                                                    <li class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <span class="badge bg-info">Meeting</span>
-                                                            <small>Oct 13</small>
-                                                        </div>
-                                                        <p class="mb-0 mt-1">G17 Project Meeting</p>
-                                                        <small class="text-muted">2:00 PM - Virtual (Zoom)</small>
-                                                    </li>
-                                                    <li class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <span class="badge bg-danger">Deadline</span>
-                                                            <small>Oct 15</small>
-                                                        </div>
-                                                        <p class="mb-0 mt-1">Progress Reports Due</p>
-                                                        <small class="text-muted">11:59 PM</small>
-                                                    </li>
-                                                    <li class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <span class="badge bg-primary">Meeting</span>
-                                                            <small>Oct 16</small>
-                                                        </div>
-                                                        <p class="mb-0 mt-1">G19 Project Meeting</p>
-                                                        <small class="text-muted">11:00 AM - Faculty Office</small>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="card">
-                                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                        <h5 class="mb-0">Academic Calendar</h5>
-                                        <button class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-download"></i> Export Calendar
-                                        </button>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Event</th>
-                                                        <th>Date</th>
-                                                        <th>Description</th>
-                                                        <th>Status</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr class="table-success">
-                                                        <td>Project Start</td>
-                                                        <td>September 5, 2023</td>
-                                                        <td>Official start of final year projects</td>
-                                                        <td><span class="badge bg-success">Completed</span></td>
-                                                    </tr>
-                                                    <tr class="table-success">
-                                                        <td>Proposal Submission</td>
-                                                        <td>September 10, 2023</td>
-                                                        <td>Submission of project proposals</td>
-                                                        <td><span class="badge bg-success">Completed</span></td>
-                                                    </tr>
-                                                    <tr class="table-success">
-                                                        <td>Design Document Submission</td>
-                                                        <td>September 25, 2023</td>
-                                                        <td>Submission of system design documents</td>
-                                                        <td><span class="badge bg-success">Completed</span></td>
-                                                    </tr>
-                                                    <tr class="table-warning">
-                                                        <td>Progress Report</td>
-                                                        <td>October 15, 2023</td>
-                                                        <td>Detailed progress report submission</td>
-                                                        <td><span class="badge bg-warning">Upcoming</span></td>
-                                                    </tr>
-                                                    <tr class="table-warning">
-                                                        <td>Midterm Presentation</td>
-                                                        <td>October 25-27, 2023</td>
-                                                        <td>Presentations to evaluation panel</td>
-                                                        <td><span class="badge bg-warning">Upcoming</span></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>Interim Report</td>
-                                                        <td>November 30, 2023</td>
-                                                        <td>Submission of interim project report</td>
-                                                        <td><span class="badge bg-secondary">Pending</span></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>Final Report Submission</td>
-                                                        <td>December 15, 2023</td>
-                                                        <td>Submission of final project report</td>
-                                                        <td><span class="badge bg-secondary">Pending</span></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>Final Presentations</td>
-                                                        <td>December 20-22, 2023</td>
-                                                        <td>Final project presentations and demonstrations</td>
-                                                        <td><span class="badge bg-secondary">Pending</span></td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
+                            {% else %}
+                            <div class="alert alert-info mb-0">
+                                <i class="bi bi-info-circle me-2"></i>No evaluations recorded yet.
                             </div>
-
-                            <!-- Reports Section -->
-                            <div id="reports" class="content-section">
-                                <h2 class="mb-4">Reports & Documentation</h2>
-
-                                <div class="row mb-4">
-                                    <div class="col-md-4">
-                                        <div class="card dashboard-card h-100">
-                                            <div class="card-body">
-                                                <h5 class="card-title d-flex align-items-center">
-                                                    <i class="bi bi-file-earmark-text text-primary me-2"
-                                                        style="font-size: 1.5rem;"></i>
-                                                    Project Reports
-                                                </h5>
-                                                <p class="card-text">Generate and download supervision reports for all
-                                                    your projects.</p>
-                                                <div class="d-grid gap-2">
-                                                    <button class="btn btn-outline-primary">
-                                                        <i class="bi bi-file-earmark-pdf"></i> Generate Project Status
-                                                        Report
-                                                    </button>
-                                                    <button class="btn btn-outline-primary">
-                                                        <i class="bi bi-file-earmark-excel"></i> Export Progress
-                                                        Tracking
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="card dashboard-card h-100">
-                                            <div class="card-body">
-                                                <h5 class="card-title d-flex align-items-center">
-                                                    <i class="bi bi-people text-success me-2"
-                                                        style="font-size: 1.5rem;"></i>
-                                                    Student Reports
-                                                </h5>
-                                                <p class="card-text">Generate and download reports related to student
-                                                    performance and activities.</p>
-                                                <div class="d-grid gap-2">
-                                                    <button class="btn btn-outline-success">
-                                                        <i class="bi bi-file-earmark-pdf"></i> Generate Performance
-                                                        Report
-                                                    </button>
-                                                    <button class="btn btn-outline-success">
-                                                        <i class="bi bi-file-earmark-excel"></i> Export Attendance
-                                                        Records
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="card dashboard-card h-100">
-                                            <div class="card-body">
-                                                <h5 class="card-title d-flex align-items-center">
-                                                    <i class="bi bi-clipboard-check text-info me-2"
-                                                        style="font-size: 1.5rem;"></i>
-                                                    Evaluation Reports
-                                                </h5>
-                                                <p class="card-text">Generate and download reports related to project
-                                                    evaluations and grades.</p>
-                                                <div class="d-grid gap-2">
-                                                    <button class="btn btn-outline-info">
-                                                        <i class="bi bi-file-earmark-pdf"></i> Generate Evaluation
-                                                        Summary
-                                                    </button>
-                                                    <button class="btn btn-outline-info">
-                                                        <i class="bi bi-file-earmark-excel"></i> Export Grade Sheet
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="card mb-4">
-                                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                        <h5 class="mb-0">Project Documentation</h5>
-                                        <button class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-upload"></i> Upload Document
-                                        </button>
-                                    </div>
-                                    <div class="card-body p-0">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover m-0">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th>Document Name</th>
-                                                        <th>Type</th>
-                                                        <th>Group</th>
-                                                        <th>Uploaded By</th>
-                                                        <th>Date</th>
-                                                        <th>Size</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr>
-                                                        <td>G23_Progress_Report.pdf</td>
-                                                        <td>Progress Report</td>
-                                                        <td>G23</td>
-                                                        <td>John Smith</td>
-                                                        <td>Oct 10, 2023</td>
-                                                        <td>2.4 MB</td>
-                                                        <td>
-                                                            <button class="btn btn-sm btn-outline-primary me-1"
-                                                                title="View">
-                                                                <i class="bi bi-eye"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-success me-1"
-                                                                title="Download">
-                                                                <i class="bi bi-download"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-secondary"
-                                                                title="Share">
-                                                                <i class="bi bi-share"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>G17_Progress_Report.pdf</td>
-                                                        <td>Progress Report</td>
-                                                        <td>G17</td>
-                                                        <td>Lisa Johnson</td>
-                                                        <td>Oct 11, 2023</td>
-                                                        <td>1.8 MB</td>
-                                                        <td>
-                                                            <button class="btn btn-sm btn-outline-primary me-1"
-                                                                title="View">
-                                                                <i class="bi bi-eye"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-success me-1"
-                                                                title="Download">
-                                                                <i class="bi bi-download"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-secondary"
-                                                                title="Share">
-                                                                <i class="bi bi-share"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>API_Integration_Guide.pdf</td>
-                                                        <td>Technical Document</td>
-                                                        <td>G17</td>
-                                                        <td>{{ current_user.first_name }}</td>
-                                                        <td>Oct 9, 2023</td>
-                                                        <td>1.2 MB</td>
-                                                        <td>
-                                                            <button class="btn btn-sm btn-outline-primary me-1"
-                                                                title="View">
-                                                                <i class="bi bi-eye"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-success me-1"
-                                                                title="Download">
-                                                                <i class="bi bi-download"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-secondary"
-                                                                title="Share">
-                                                                <i class="bi bi-share"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>Midterm_Presentation_Template.pptx</td>
-                                                        <td>Template</td>
-                                                        <td>All Groups</td>
-                                                        <td>{{ current_user.first_name }}</td>
-                                                        <td>Oct 5, 2023</td>
-                                                        <td>3.5 MB</td>
-                                                        <td>
-                                                            <button class="btn btn-sm btn-outline-primary me-1"
-                                                                title="View">
-                                                                <i class="bi bi-eye"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-success me-1"
-                                                                title="Download">
-                                                                <i class="bi bi-download"></i>
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-secondary"
-                                                                title="Share">
-                                                                <i class="bi bi-share"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header bg-white">
-                                                <h5 class="mb-0">Recent Activity Log</h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="list-group">
-                                                    <div class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h6 class="mb-1">Document Upload</h6>
-                                                            <small class="text-muted">Today, 10:23 AM</small>
-                                                        </div>
-                                                        <p class="mb-1 small">G23_Progress_Report.pdf was uploaded by
-                                                            John Smith</p>
-                                                    </div>
-                                                    <div class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h6 class="mb-1">Meeting Scheduled</h6>
-                                                            <small class="text-muted">Yesterday, 3:45 PM</small>
-                                                        </div>
-                                                        <p class="mb-1 small">You scheduled a meeting with G17 for
-                                                            October 13, 2:00 PM</p>
-                                                    </div>
-                                                    <div class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h6 class="mb-1">Document Upload</h6>
-                                                            <small class="text-muted">Oct 9, 9:30 AM</small>
-                                                        </div>
-                                                        <p class="mb-1 small">You uploaded API_Integration_Guide.pdf</p>
-                                                    </div>
-                                                    <div class="list-group-item">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h6 class="mb-1">Report Generated</h6>
-                                                            <small class="text-muted">Oct 8, 2:15 PM</small>
-                                                        </div>
-                                                        <p class="mb-1 small">You generated a Project Status Report</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header bg-white">
-                                                <h5 class="mb-0">Reporting Templates</h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="list-group">
-                                                    <a href="#"
-                                                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <h6 class="mb-1">Monthly Supervision Report</h6>
-                                                            <p class="mb-1 small">Template for monthly reporting on
-                                                                project supervision</p>
-                                                        </div>
-                                                        <button class="btn btn-sm btn-outline-primary">
-                                                            <i class="bi bi-download"></i>
-                                                        </button>
-                                                    </a>
-                                                    <a href="#"
-                                                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <h6 class="mb-1">Student Performance Evaluation</h6>
-                                                            <p class="mb-1 small">Template for evaluating student
-                                                                performance</p>
-                                                        </div>
-                                                        <button class="btn btn-sm btn-outline-primary">
-                                                            <i class="bi bi-download"></i>
-                                                        </button>
-                                                    </a>
-                                                    <a href="#"
-                                                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <h6 class="mb-1">Project Status Summary</h6>
-                                                            <p class="mb-1 small">Template for summarizing project
-                                                                status</p>
-                                                        </div>
-                                                        <button class="btn btn-sm btn-outline-primary">
-                                                            <i class="bi bi-download"></i>
-                                                        </button>
-                                                    </a>
-                                                    <a href="#"
-                                                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <h6 class="mb-1">Midterm Evaluation Form</h6>
-                                                            <p class="mb-1 small">Template for midterm project
-                                                                evaluation</p>
-                                                        </div>
-                                                        <button class="btn btn-sm btn-outline-primary">
-                                                            <i class="bi bi-download"></i>
-                                                        </button>
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -1930,6 +1509,9 @@
                         });
                     });
                 </script>
+            </div><!-- /.col-lg-10 main-content -->
+        </div><!-- /.row g-0 -->
+    </div><!-- /.container-fluid -->
 </body>
 
 </html>

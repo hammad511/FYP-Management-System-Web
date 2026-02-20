@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import current_user, login_required
-from app import db, role_required, User, Notification, ProjectProposal, ProjectDetails, ProjectStatus, ProjectMilestone, StudentGroup, GroupMember
 from datetime import datetime
 
 project_bp = Blueprint('project', __name__)
+
 
 
 # Student routes for project proposal
@@ -339,7 +339,7 @@ def update_project_status(group_id):
         
         db.session.commit()
         flash('Project status updated successfully', 'success')
-        return redirect(url_for('project.teacher_assigned_projects'))
+        return redirect(url_for('project.faculty_assigned_projects'))
     
     return render_template('update_project_status.html', group=group, status_entry=status_entry)
 

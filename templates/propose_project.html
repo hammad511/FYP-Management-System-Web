@@ -12,66 +12,78 @@
                 </div>
                 <div class="card-body">
                     {% if in_active_group %}
-                        <div class="alert alert-warning">
-                            <i class="bi bi-exclamation-triangle me-2"></i>You are already assigned to a project group. You cannot propose a new project at this time.
-                        </div>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>You are already assigned to a project group. You
+                        cannot propose a new project at this time.
+                    </div>
                     {% elif existing_proposals %}
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle me-2"></i>You already have pending project proposals. You can view them in the <a href="{{ url_for('project.my_proposals') }}">My Proposals</a> section.
-                        </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>You already have pending project proposals. You can view
+                        them in the <a href="{{ url_for('project.my_proposals') }}">My Proposals</a> section.
+                    </div>
                     {% else %}
-                        <form method="POST" action="{{ url_for('project.propose_project') }}">
-                            <div class="mb-3">
-                                <label for="title" class="form-label">Project Title <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="title" name="title" required placeholder="Enter a concise, descriptive title for your project">
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="major" class="form-label">Project Major/Field <span class="text-danger">*</span></label>
-                                <select class="form-select" id="major" name="major" required>
-                                    <option value="" selected disabled>Select the primary field of your project</option>
-                                    <option value="AI/ML">Artificial Intelligence / Machine Learning</option>
-                                    <option value="Cyber Security">Cyber Security</option>
-                                    <option value="Blockchain">Blockchain</option>
-                                    <option value="Web Development">Web Development</option>
-                                    <option value="Mobile App Development">Mobile App Development</option>
-                                    <option value="IoT">Internet of Things (IoT)</option>
-                                    <option value="Data Science">Data Science</option>
-                                    <option value="Cloud Computing">Cloud Computing</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="description" class="form-label">Project Description <span class="text-danger">*</span></label>
-                                <textarea class="form-control" id="description" name="description" rows="6" required placeholder="Provide a detailed description of your project, including objectives, scope, and expected outcomes"></textarea>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="supervisor_id" class="form-label">Preferred Supervisor</label>
-                                <select class="form-select" id="supervisor_id" name="supervisor_id">
-                                    <option value="" selected>Select a supervisor (optional)</option>
-                                    {% for supervisor in supervisors %}
-                                        <option value="{{ supervisor.id }}">{{ supervisor.first_name }} {{ supervisor.last_name }}</option>
-                                    {% endfor %}
-                                </select>
-                                <div class="form-text">If you don't select a supervisor, one will be assigned to you by the admin.</div>
-                            </div>
-                            
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                <a href="{{ url_for('dashboard_student') }}" class="btn btn-outline-secondary">Cancel</a>
-                                <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i>Submit Proposal</button>
-                            </div>
-                        </form>
+                    <form method="POST" action="{{ url_for('project.propose_project') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Project Title <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" required
+                                placeholder="Enter a concise, descriptive title for your project">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="major" class="form-label">Project Major/Field <span
+                                    class="text-danger">*</span></label>
+                            <select class="form-select" id="major" name="major" required>
+                                <option value="" selected disabled>Select the primary field of your project</option>
+                                <option value="AI/ML">Artificial Intelligence / Machine Learning</option>
+                                <option value="Cyber Security">Cyber Security</option>
+                                <option value="Blockchain">Blockchain</option>
+                                <option value="Web Development">Web Development</option>
+                                <option value="Mobile App Development">Mobile App Development</option>
+                                <option value="IoT">Internet of Things (IoT)</option>
+                                <option value="Data Science">Data Science</option>
+                                <option value="Cloud Computing">Cloud Computing</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Project Description <span
+                                    class="text-danger">*</span></label>
+                            <textarea class="form-control" id="description" name="description" rows="6" required
+                                placeholder="Provide a detailed description of your project, including objectives, scope, and expected outcomes"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="supervisor_id" class="form-label">Preferred Supervisor</label>
+                            <select class="form-select" id="supervisor_id" name="supervisor_id">
+                                <option value="" selected>Select a supervisor (optional)</option>
+                                {% for supervisor in supervisors %}
+                                <option value="{{ supervisor.id }}">{{ supervisor.first_name }} {{ supervisor.last_name
+                                    }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">If you don't select a supervisor, one will be assigned to you by the
+                                admin.</div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('dashboard_student') }}" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i>Submit
+                                Proposal</button>
+                        </div>
+                    </form>
                     {% endif %}
                 </div>
                 <div class="card-footer">
                     <div class="small text-muted">
-                        <i class="bi bi-info-circle me-1"></i> Your proposal will be reviewed by the supervisor and administrators. You will be notified of their decision.
+                        <i class="bi bi-info-circle me-1"></i> Your proposal will be reviewed by the supervisor and
+                        administrators. You will be notified of their decision.
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

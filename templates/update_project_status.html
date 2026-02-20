@@ -25,205 +25,212 @@
                 <div class="card-body">
                     <h3 class="mb-3">{{ group.project_title }}</h3>
                     <p class="badge bg-secondary mb-3">Group ID: {{ group.group_id }}</p>
-                    
+
                     <div class="row mb-3">
                         <div class="col-md-4 fw-bold">Supervisor:</div>
                         <div class="col-md-8">
                             {% if group.supervisor %}
-                                {{ group.supervisor.first_name }} {{ group.supervisor.last_name }}
+                            {{ group.supervisor.first_name }} {{ group.supervisor.last_name }}
                             {% else %}
-                                <span class="text-muted">Not assigned</span>
+                            <span class="text-muted">Not assigned</span>
                             {% endif %}
                         </div>
                     </div>
-                    
+
                     <div class="row mb-3">
                         <div class="col-md-4 fw-bold">Current Status:</div>
                         <div class="col-md-8">
                             {% if status_entry.status == 'Pending' %}
-                                <span class="badge bg-warning">Pending</span>
+                            <span class="badge bg-warning">Pending</span>
                             {% elif status_entry.status == 'Accepted' %}
-                                <span class="badge bg-success">Accepted</span>
+                            <span class="badge bg-success">Accepted</span>
                             {% elif status_entry.status == 'Conditionally Accepted' %}
-                                <span class="badge bg-info">Conditionally Accepted</span>
+                            <span class="badge bg-info">Conditionally Accepted</span>
                             {% elif status_entry.status == 'Deferred' %}
-                                <span class="badge bg-danger">Deferred</span>
+                            <span class="badge bg-danger">Deferred</span>
                             {% else %}
-                                <span class="badge bg-secondary">{{ status_entry.status }}</span>
+                            <span class="badge bg-secondary">{{ status_entry.status }}</span>
                             {% endif %}
                         </div>
                     </div>
-                    
+
                     <div class="row mb-3">
                         <div class="col-md-4 fw-bold">Last Updated:</div>
                         <div class="col-md-8">
                             {% if status_entry.updated_at %}
-                                {{ status_entry.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                            {{ status_entry.updated_at.strftime('%Y-%m-%d %H:%M') }}
                             {% else %}
-                                <span class="text-muted">Not updated yet</span>
+                            <span class="text-muted">Not updated yet</span>
                             {% endif %}
                         </div>
                     </div>
-                    
+
                     {% if group.details %}
-                        <div class="row mb-3">
-                            <div class="col-md-4 fw-bold">Project Major:</div>
-                            <div class="col-md-8">
-                                {% set badge_class = "bg-secondary" %}
-                                {% if group.details.major == 'AI/ML' %}
-                                    {% set badge_class = "bg-info" %}
-                                {% elif group.details.major == 'Cyber Security' %}
-                                    {% set badge_class = "bg-danger" %}
-                                {% elif group.details.major == 'Blockchain' %}
-                                    {% set badge_class = "bg-warning" %}
-                                {% elif group.details.major == 'Web Development' %}
-                                    {% set badge_class = "bg-success" %}
-                                {% elif group.details.major == 'Mobile App Development' %}
-                                    {% set badge_class = "bg-primary" %}
-                                {% endif %}
-                                <span class="badge {{ badge_class }}">
-                                    {{ group.details.major }}
-                                </span>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-4 fw-bold">Project Progress:</div>
-                            <div class="col-md-8">
-                                {% set progress_class = "bg-success" %}
-                                {% if group.details.progress < 30 %}
-                                    {% set progress_class = "bg-danger" %}
-                                {% elif group.details.progress < 70 %}
-                                    {% set progress_class = "bg-warning" %}
-                                {% endif %}
-                                <div class="progress">
-                                    <div class="progress-bar {{ progress_class }}" 
-                                        role="progressbar" 
-                                        style="width: {{ group.details.progress }}%" 
-                                        aria-valuenow="{{ group.details.progress }}" 
-                                        aria-valuemin="0" 
-                                        aria-valuemax="100">
-                                        {{ group.details.progress }}%
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {% if group.details.description %}
-                            <div class="row mb-4">
-                                <div class="col-12 fw-bold mb-2">Project Description:</div>
-                                <div class="col-12">
-                                    <div class="p-3 bg-light rounded">
-                                        {{ group.details.description|nl2br }}
-                                    </div>
-                                </div>
-                            </div>
-                        {% endif %}
-                    {% endif %}
-                    
-                    <!-- Group Members Section -->
                     <div class="row mb-3">
-                        <div class="col-12 fw-bold mb-2">Group Members:</div>
-                        <div class="col-12">
-                            <ul class="list-group">
-                                {% for member in group.members %}
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <strong>{{ member.user.first_name }} {{ member.user.last_name }}</strong>
-                                            <br>
-                                            <small class="text-muted">{{ member.user.email }}</small>
-                                        </div>
-                                        <span class="badge bg-primary">{{ member.user.role }}</span>
-                                    </li>
-                                {% else %}
-                                    <li class="list-group-item text-center text-muted">No members found</li>
-                                {% endfor %}
-                            </ul>
+                        <div class="col-md-4 fw-bold">Project Major:</div>
+                        <div class="col-md-8">
+                            {% set badge_class = "bg-secondary" %}
+                            {% if group.details.major == 'AI/ML' %}
+                            {% set badge_class = "bg-info" %}
+                            {% elif group.details.major == 'Cyber Security' %}
+                            {% set badge_class = "bg-danger" %}
+                            {% elif group.details.major == 'Blockchain' %}
+                            {% set badge_class = "bg-warning" %}
+                            {% elif group.details.major == 'Web Development' %}
+                            {% set badge_class = "bg-success" %}
+                            {% elif group.details.major == 'Mobile App Development' %}
+                            {% set badge_class = "bg-primary" %}
+                            {% endif %}
+                            <span class="badge {{ badge_class }}">
+                                {{ group.details.major }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4 fw-bold">Project Progress:</div>
+                        <div class="col-md-8">
+                            {% set progress_class = "bg-success" %}
+                            {% if group.details.progress < 30 %} {% set progress_class="bg-danger" %} {% elif
+                                group.details.progress < 70 %} {% set progress_class="bg-warning" %} {% endif %} <div
+                                class="progress">
+                                <div class="progress-bar {{ progress_class }}" role="progressbar"
+                                    style="width: {{ group.details.progress }}%"
+                                    aria-valuenow="{{ group.details.progress }}" aria-valuemin="0" aria-valuemax="100">
+                                    {{ group.details.progress }}%
+                                </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        
-        <div class="col-md-5">
-            <!-- Update Status Form -->
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Update Project Status</h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('project.update_project_status', group_id=group.id) }}">
-                        <div class="mb-3">
-                            <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                            <select class="form-select" id="status" name="status" required>
-                                <option value="" selected disabled>Select a status</option>
-                                <option value="Accepted" {% if status_entry.status == 'Accepted' %}selected{% endif %}>Accepted</option>
-                                <option value="Conditionally Accepted" {% if status_entry.status == 'Conditionally Accepted' %}selected{% endif %}>Conditionally Accepted</option>
-                                <option value="Deferred" {% if status_entry.status == 'Deferred' %}selected{% endif %}>Deferred</option>
-                            </select>
+
+                {% if group.details.description %}
+                <div class="row mb-4">
+                    <div class="col-12 fw-bold mb-2">Project Description:</div>
+                    <div class="col-12">
+                        <div class="p-3 bg-light rounded">
+                            {{ group.details.description|nl2br }}
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="feedback" class="form-label">Detailed Feedback <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="feedback" name="feedback" rows="5" required placeholder="Provide detailed feedback about the project status...">{{ status_entry.feedback }}</textarea>
-                            <div class="form-text">This feedback will be visible to the supervisor and other evaluators.</div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="student_feedback" class="form-label">Student Feedback <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="student_feedback" name="student_feedback" rows="5" required placeholder="Provide feedback that will be shown to students...">{{ status_entry.student_feedback }}</textarea>
-                            <div class="form-text">This feedback will be visible to students. Keep it concise and constructive.</div>
-                        </div>
-                        
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle me-1"></i>Update Status
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                <div class="card-footer">
-                    <div class="small text-muted">
-                        <i class="bi bi-info-circle me-1"></i> Status updates will be immediately visible to students and supervisors. Students will be notified of the status change.
                     </div>
                 </div>
-            </div>
-            
-            <!-- Status Guide Card -->
-            <div class="card shadow mt-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Status Guide</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item px-0">
-                            <div class="d-flex">
-                                <span class="badge bg-success me-2">Accepted</span>
+                {% endif %}
+                {% endif %}
+
+                <!-- Group Members Section -->
+                <div class="row mb-3">
+                    <div class="col-12 fw-bold mb-2">Group Members:</div>
+                    <div class="col-12">
+                        <ul class="list-group">
+                            {% for member in group.members %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
-                                    <small>Project meets all requirements and can proceed without major changes.</small>
+                                    <strong>{{ member.user.first_name }} {{ member.user.last_name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ member.user.email }}</small>
                                 </div>
-                            </div>
-                        </li>
-                        <li class="list-group-item px-0">
-                            <div class="d-flex">
-                                <span class="badge bg-info me-2">Conditionally Accepted</span>
-                                <div>
-                                    <small>Project is acceptable but requires specific improvements or minor changes.</small>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="list-group-item px-0">
-                            <div class="d-flex">
-                                <span class="badge bg-danger me-2">Deferred</span>
-                                <div>
-                                    <small>Project has significant issues that need major revisions before proceeding.</small>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
+                                <span class="badge bg-primary">{{ member.user.role }}</span>
+                            </li>
+                            {% else %}
+                            <li class="list-group-item text-center text-muted">No members found</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="col-md-5">
+        <!-- Update Status Form -->
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Update Project Status</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('project.update_project_status', group_id=group.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                        <select class="form-select" id="status" name="status" required>
+                            <option value="" selected disabled>Select a status</option>
+                            <option value="Accepted" {% if status_entry.status=='Accepted' %}selected{% endif %}>
+                                Accepted</option>
+                            <option value="Conditionally Accepted" {% if status_entry.status=='Conditionally Accepted'
+                                %}selected{% endif %}>Conditionally Accepted</option>
+                            <option value="Deferred" {% if status_entry.status=='Deferred' %}selected{% endif %}>
+                                Deferred</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="feedback" class="form-label">Detailed Feedback <span
+                                class="text-danger">*</span></label>
+                        <textarea class="form-control" id="feedback" name="feedback" rows="5" required
+                            placeholder="Provide detailed feedback about the project status...">{{ status_entry.feedback }}</textarea>
+                        <div class="form-text">This feedback will be visible to the supervisor and other evaluators.
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="student_feedback" class="form-label">Student Feedback <span
+                                class="text-danger">*</span></label>
+                        <textarea class="form-control" id="student_feedback" name="student_feedback" rows="5" required
+                            placeholder="Provide feedback that will be shown to students...">{{ status_entry.student_feedback }}</textarea>
+                        <div class="form-text">This feedback will be visible to students. Keep it concise and
+                            constructive.</div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>Update Status
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer">
+                <div class="small text-muted">
+                    <i class="bi bi-info-circle me-1"></i> Status updates will be immediately visible to students and
+                    supervisors. Students will be notified of the status change.
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Guide Card -->
+        <div class="card shadow mt-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Status Guide</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item px-0">
+                        <div class="d-flex">
+                            <span class="badge bg-success me-2">Accepted</span>
+                            <div>
+                                <small>Project meets all requirements and can proceed without major changes.</small>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item px-0">
+                        <div class="d-flex">
+                            <span class="badge bg-info me-2">Conditionally Accepted</span>
+                            <div>
+                                <small>Project is acceptable but requires specific improvements or minor
+                                    changes.</small>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item px-0">
+                        <div class="d-flex">
+                            <span class="badge bg-danger me-2">Deferred</span>
+                            <div>
+                                <small>Project has significant issues that need major revisions before
+                                    proceeding.</small>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
 </div>
-{% endblock %} 
+</div>
+{% endblock %}

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,6 +22,7 @@
             justify-content: center;
             min-height: 100vh;
         }
+
         .login-container {
             max-width: 400px;
             width: 100%;
@@ -30,28 +32,33 @@
             color: white;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
+
         .form-control {
             background-color: rgba(255, 255, 255, 0.1);
             border: none;
             color: white;
             margin-bottom: 15px;
         }
+
         .form-control:focus {
             background-color: rgba(255, 255, 255, 0.2);
             color: white;
             box-shadow: none;
         }
+
         .form-select {
             background-color: rgba(255, 255, 255, 0.1);
             border: none;
             color: white;
             margin-bottom: 15px;
         }
+
         .form-select:focus {
             background-color: rgba(255, 255, 255, 0.2);
             color: black;
             box-shadow: none;
         }
+
         .btn-primary {
             background-color: white;
             color: black;
@@ -62,62 +69,75 @@
             text-shadow: none;
             transition: all 0.3s ease;
         }
+
         .btn-primary:hover {
             background-color: black;
             color: white;
             box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
+
         .login-title {
             display: flex;
             align-items: center;
             margin-bottom: 20px;
         }
+
         .login-title i {
             font-size: 24px;
             margin-right: 10px;
             color: #00b8ff;
             text-shadow: 0px 0px 5px rgba(255, 255, 255, 0.5);
         }
+
         .login-title h2 {
             margin: 0;
             color: #00b8ff;
             text-shadow: 0px 0px 5px rgba(255, 255, 255, 0.5);
             -webkit-text-stroke: 0.5px white;
         }
+
         .signup-link {
             text-align: center;
             margin-top: 15px;
         }
+
         .signup-link a {
             color: #00b8ff;
             text-decoration: none;
             text-shadow: 0px 0px 4px rgba(255, 255, 255, 0.5);
         }
+
         .signup-link a:hover {
             text-decoration: underline;
         }
+
         .forgot-password {
             text-align: right;
             margin-bottom: 15px;
         }
+
         .forgot-password a {
             color: #00b8ff;
             text-decoration: none;
             font-size: 0.9rem;
             text-shadow: 0px 0px 4px rgba(255, 255, 255, 0.5);
         }
+
         .forgot-password a:hover {
             text-decoration: underline;
         }
+
         p {
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
         }
+
         .alert {
             text-shadow: 0px 0px 2px rgba(0, 0, 0, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
         <div class="login-title">
@@ -125,23 +145,25 @@
             <h2>Sign in</h2>
         </div>
         <p>Login to access your dashboard.</p>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert" id="alert-{{ loop.index }}">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert" id="alert-{{ loop.index }}">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
         {% endwith %}
-        
-        <form action="{{ url_for('login') }}" method="POST">
+
+        <form method="POST" action="{{ url_for('login') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="email" class="form-control" name="email" placeholder="Email" required>
-            
+
             <input type="password" class="form-control" name="password" placeholder="Password" required>
-            
+
             <select class="form-select" name="role" required>
                 <option value="" disabled selected>Select your role</option>
                 <option value="student">Student</option>
@@ -149,26 +171,26 @@
                 <option value="supervisor">Supervisor</option>
                 <option value="admin">Admin</option>
             </select>
-            
+
             <div class="forgot-password">
                 <a href="{{ url_for('forgot_password') }}">Forgot password?</a>
             </div>
-            
+
             <button type="submit" class="btn btn-primary">Sign in</button>
         </form>
-        
+
         <div class="text-center mt-3">
             <p class="text-white">- OR -</p>
             <a href="{{ url_for('login_google') }}" class="btn btn-outline-light w-100">
                 <i class="bi bi-google" style="margin-right: 10px;"></i>Sign in with Google
             </a>
         </div>
-        
+
         <div class="signup-link">
             Don't have an account? <a href="{{ url_for('signup') }}">Register</a>
         </div>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Auto-dismiss flash messages after 5 seconds
@@ -181,4 +203,5 @@
         });
     </script>
 </body>
-</html> 
+
+</html>

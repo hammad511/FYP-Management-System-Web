@@ -3,286 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - FYP Management System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
-    <style>
-        body {
-            background-color: #313131;
-            background-image: radial-gradient(rgba(255, 255, 255, 0.171) 2px, transparent 0);
-            background-size: 30px 30px;
-            background-position: -5px -5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
-        .register-container {
-            max-width: 500px;
-            width: 100%;
-            padding: 20px;
-            border-radius: 10px;
-            background-color: #212529;
-            color: white;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        .form-control {
-            background-color: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: white;
-            margin-bottom: 15px;
-        }
-        .form-control:focus {
-            background-color: rgba(255, 255, 255, 0.2);
-            color: white;
-            box-shadow: none;
-        }
-        .form-select {
-            background-color: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: white;
-            margin-bottom: 15px;
-        }
-        .form-select:focus {
-            background-color: rgba(255, 255, 255, 0.2);
-            color: white;
-            box-shadow: none;
-        }
-        .btn-primary {
-            background-color: white;
-            color: black;
-            border: 2px solid black;
-            width: 100%;
-            padding: 10px;
-            font-weight: bold;
-            text-shadow: none;
-            transition: all 0.3s ease;
-        }
-        .btn-primary:hover {
-            background-color: black;
-            color: white;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        }
-        .register-title {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .register-title i {
-            font-size: 24px;
-            margin-right: 10px;
-            color: #00b8ff;
-            text-shadow: 0px 0px 5px rgba(255, 255, 255, 0.5);
-        }
-        .register-title h2 {
-            margin: 0;
-            color: #00b8ff;
-            text-shadow: 0px 0px 5px rgba(255, 255, 255, 0.5);
-            -webkit-text-stroke: 0.5px white;
-        }
-        .signin-link {
-            text-align: center;
-            margin-top: 15px;
-        }
-        .signin-link a {
-            color: #00b8ff;
-            text-decoration: none;
-            text-shadow: 0px 0px 4px rgba(255, 255, 255, 0.5);
-        }
-        .signin-link a:hover {
-            text-decoration: underline;
-        }
-        p {
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-        }
-        .alert {
-            text-shadow: 0px 0px 2px rgba(0, 0, 0, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-    </style>
+    <title>Sign Up - FYP Management System</title>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Shared Auth CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth-modern.css') }}">
 </head>
-<body>
-    <div class="register-container">
-        <div class="register-title">
-            <i class="bi bi-person-plus-fill"></i>
-            <h2>Register</h2>
+<body class="auth-body">
+
+    <!-- Animated particles -->
+    <div class="particles"></div>
+
+    <div class="auth-card signup-card">
+        <!-- ── Hero panel ── -->
+        <div class="auth-hero">
+            <div class="hero-content">
+                <div class="hero-icon"><i class="bi bi-person-plus-fill"></i></div>
+                <h1 class="hero-title">Student<br>Registration</h1>
+                <p class="hero-desc">
+                    Create your student account and get instant access to project
+                    submission, viva scheduling, and collaboration tools.
+                </p>
+                <ul class="hero-features">
+                    <li><span class="feat-icon"><i class="bi bi-check-lg"></i></span> Submit &amp; track projects</li>
+                    <li><span class="feat-icon"><i class="bi bi-check-lg"></i></span> Schedule viva sessions</li>
+                    <li><span class="feat-icon"><i class="bi bi-check-lg"></i></span> Real-time collaboration</li>
+                    <li><span class="feat-icon"><i class="bi bi-check-lg"></i></span> Role-based dashboards</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ── Form panel ── -->
+        <div class="auth-form-wrap">
+            <div class="auth-form-header">
+                <h2>Student Sign Up</h2>
+                <p>Already have an account? <a href="{{ url_for('login') }}">Sign in here</a></p>
+            </div>
+
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="auth-alert {{ category }}">
+                            <i class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'danger' %}bi-exclamation-triangle-fill{% elif category == 'warning' %}bi-exclamation-circle-fill{% else %}bi-info-circle-fill{% endif %}"></i>
+                            <span>{{ message }}</span>
                         </div>
-        <p>Signup now and get full access to our app.</p>
-        
-                        {% with messages = get_flashed_messages(with_categories=true) %}
-                            {% if messages %}
-                                {% for category, message in messages %}
-                                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert" id="alert-{{ loop.index }}">
-                                        {{ message }}
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                    </div>
-                                {% endfor %}
-                            {% endif %}
-                        {% endwith %}
-        
-        <form action="{{ url_for('signup') }}" method="POST">
-                            <div class="row">
-                <div class="col-md-6">
-                    <input type="text" class="form-control" name="firstName" placeholder="Firstname" required>
-                                </div>
-                <div class="col-md-6">
-                    <input type="text" class="form-control" name="lastName" placeholder="Lastname" required>
-                                </div>
-                            </div>
-            
-            <input type="email" class="form-control" name="email" placeholder="Email" required>
-            
-            <input type="password" class="form-control" name="password" placeholder="Password" required>
-            
-            <input type="password" class="form-control" name="confirmPassword" placeholder="Confirm password" required>
-            
-                            <div class="mb-3">
-                                <label for="role" class="form-label">Role</label>
-                                <select class="form-select" id="role" name="role" required>
-                    <option value="" selected disabled>Select a role</option>
-                                    <option value="student">Student</option>
-                                    <option value="faculty">Faculty</option>
-                                    <option value="supervisor">Supervisor</option>
-                                </select>
-                            </div>
-            
-            <div class="mb-3" id="usernameField" style="display: none;">
-                <label for="username" class="form-label">Faculty Username</label>
-                <input type="text" class="form-control" id="username" name="username" placeholder="Enter the username provided by admin">
-                <div class="form-text">Faculty accounts require a pre-approved username from an administrator.</div>
-            </div>
-            
-            <!-- Supervisor Fields -->
-            <div id="supervisorFields" style="display: none;">
-                <div class="mb-3">
-                    <label for="highestDegree" class="form-label">Highest Degree</label>
-                    <select class="form-select" id="highestDegree" name="highestDegree">
-                        <option value="" selected disabled>Select your highest degree</option>
-                        <option value="PhD">PhD</option>
-                        <option value="Masters">Masters</option>
-                        <option value="Bachelors">Bachelors</option>
-                    </select>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="specialization" class="form-label">Specialization</label>
-                    <input type="text" class="form-control" id="specialization" name="specialization" placeholder="Your area of specialization">
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label">Affiliation</label>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="affiliation" id="nutechUniversity" value="NUTECH" checked>
-                        <label class="form-check-label" for="nutechUniversity">
-                            NUTECH
-                        </label>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form class="auth-form" method="POST" action="{{ url_for('signup') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Name row -->
+                <div class="field-row">
+                    <div class="field">
+                        <label class="field-label" for="firstName">First Name</label>
+                        <div class="input-wrap">
+                            <input type="text" id="firstName" name="firstName" placeholder="First name" required>
+                            <i class="bi bi-person icon"></i>
+                        </div>
+                        <div class="field-error"></div>
                     </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" name="affiliation" id="otherUniversity" value="Other">
-                        <label class="form-check-label" for="otherUniversity">
-                            Other
-                        </label>
+                    <div class="field">
+                        <label class="field-label" for="lastName">Last Name</label>
+                        <div class="input-wrap">
+                            <input type="text" id="lastName" name="lastName" placeholder="Last name" required>
+                            <i class="bi bi-person icon"></i>
+                        </div>
+                        <div class="field-error"></div>
                     </div>
                 </div>
-                
-                <div class="mb-3" id="otherAffiliationField" style="display: none;">
-                    <label for="otherAffiliation" class="form-label">Specify Other Affiliation</label>
-                    <input type="text" class="form-control" id="otherAffiliation" name="otherAffiliation" placeholder="Enter your affiliation">
+
+                <!-- Email -->
+                <div class="field">
+                    <label class="field-label" for="email">Email Address</label>
+                    <div class="input-wrap">
+                        <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                        <i class="bi bi-envelope icon"></i>
+                    </div>
+                    <div class="field-error"></div>
                 </div>
-            </div>
-            
-            <!-- Student Fields -->
-            <div id="studentFields" style="display: none;">
-                <div class="mb-3">
-                    <label for="program" class="form-label">Program</label>
-                    <select class="form-select" id="program" name="program">
-                        <option value="" selected disabled>Select your program</option>
-                        <option value="CS">Computer Science (CS)</option>
-                        <option value="IT">Information Technology (IT)</option>
-                        <option value="AI">Artificial Intelligence (AI)</option>
-                    </select>
+
+                <!-- Password -->
+                <div class="field">
+                    <label class="field-label" for="password">Password</label>
+                    <div class="input-wrap">
+                        <input type="password" id="password" name="password" placeholder="Min. 8 characters" required>
+                        <i class="bi bi-lock icon"></i>
+                        <button type="button" class="pw-toggle" tabindex="-1"><i class="bi bi-eye"></i></button>
+                    </div>
+                    <div class="pw-strength">
+                        <div class="pw-bar" id="bar1"></div>
+                        <div class="pw-bar" id="bar2"></div>
+                        <div class="pw-bar" id="bar3"></div>
+                        <div class="pw-bar" id="bar4"></div>
+                    </div>
+                    <div class="pw-label" id="pwLabel"></div>
+                    <div class="field-error"></div>
                 </div>
-                
-                <div class="mb-3">
-                    <label for="semester" class="form-label">Semester</label>
-                    <select class="form-select" id="semester" name="semester">
-                        <option value="" selected disabled>Select your current semester</option>
-                        <option value="1">1st Semester</option>
-                        <option value="2">2nd Semester</option>
-                        <option value="3">3rd Semester</option>
-                        <option value="4">4th Semester</option>
-                        <option value="5">5th Semester</option>
-                        <option value="6">6th Semester</option>
-                        <option value="7">7th Semester</option>
-                        <option value="8">8th Semester</option>
-                    </select>
+
+                <!-- Confirm Password -->
+                <div class="field">
+                    <label class="field-label" for="confirmPassword">Confirm Password</label>
+                    <div class="input-wrap">
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter password" required>
+                        <i class="bi bi-shield-lock icon"></i>
+                        <button type="button" class="pw-toggle" tabindex="-1"><i class="bi bi-eye"></i></button>
+                    </div>
+                    <div class="field-error"></div>
                 </div>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">Submit</button>
-        </form>
-        
-        <div class="signin-link">
-            Already have an account? <a href="{{ url_for('login') }}">Signin</a>
+
+                <!-- Role (student only) -->
+                <input type="hidden" name="role" value="student">
+
+                <!-- ── Student fields ── -->
+                <div id="studentFields">
+                    <div class="role-section">
+                        <div class="role-section-title"><i class="bi bi-book"></i> Student Details</div>
+                        <div class="field-row">
+                            <div class="field">
+                                <label class="field-label" for="program">Program</label>
+                                <div class="input-wrap">
+                                    <select id="program" name="program" required>
+                                        <option value="" disabled selected>Select</option>
+                                        <option value="BSCS">BS Computer Science</option>
+                                        <option value="BSSE">BS Software Engineering</option>
+                                        <option value="BSIT">BS Information Technology</option>
+                                        <option value="BSAI">BS Artificial Intelligence</option>
+                                        <option value="BSDS">BS Data Science</option>
+                                        <option value="BSCY">BS Cyber Security</option>
+                                        <option value="BSEE">BS Electrical Engineering</option>
+                                        <option value="BSME">BS Mechanical Engineering</option>
+                                        <option value="BSCE">BS Civil Engineering</option>
+                                        <option value="BSBA">BS Business Administration</option>
+                                    </select>
+                                    <i class="bi bi-laptop icon"></i>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label class="field-label" for="semester">Semester</label>
+                                <div class="input-wrap">
+                                    <select id="semester" name="semester" required>
+                                        <option value="" disabled selected>Select</option>
+                                        <option value="7">7th</option>
+                                        <option value="8">8th</option>
+                                    </select>
+                                    <i class="bi bi-calendar3 icon"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn-auth">
+                    <i class="bi bi-person-plus"></i>
+                    <span class="btn-text">Create My Account</span>
+                </button>
+
+                <p class="auth-bottom">
+                    Already a member? <a href="{{ url_for('login') }}">Sign in instead</a>
+                </p>
+            </form>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Show/hide fields based on role selection
-        document.getElementById('role').addEventListener('change', function() {
-            const usernameField = document.getElementById('usernameField');
-            const usernameInput = document.getElementById('username');
-            const supervisorFields = document.getElementById('supervisorFields');
-            const studentFields = document.getElementById('studentFields');
-            
-            // Hide all role-specific fields first
-            usernameField.style.display = 'none';
-            supervisorFields.style.display = 'none';
-            studentFields.style.display = 'none';
-            
-            // Reset required attributes
-            usernameInput.required = false;
-            document.getElementById('highestDegree').required = false;
-            document.getElementById('specialization').required = false;
-            document.getElementById('program').required = false;
-            document.getElementById('semester').required = false;
-            
-            // Show relevant fields based on role
-            if (this.value === 'faculty') {
-                usernameField.style.display = 'block';
-                usernameInput.required = true;
-            } else if (this.value === 'supervisor') {
-                supervisorFields.style.display = 'block';
-                document.getElementById('highestDegree').required = true;
-                document.getElementById('specialization').required = true;
-            } else if (this.value === 'student') {
-                studentFields.style.display = 'block';
-                document.getElementById('program').required = true;
-                document.getElementById('semester').required = true;
-            }
-        });
-        
-        // Show/hide other affiliation field
-        document.getElementById('otherUniversity').addEventListener('change', function() {
-            document.getElementById('otherAffiliationField').style.display = 'block';
-            document.getElementById('otherAffiliation').required = true;
-        });
-        
-        document.getElementById('nutechUniversity').addEventListener('change', function() {
-            document.getElementById('otherAffiliationField').style.display = 'none';
-            document.getElementById('otherAffiliation').required = false;
-        });
-        
-        // Auto-dismiss flash messages after 5 seconds
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(alert => {
-            setTimeout(() => {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            }, 5000); // 5 seconds
-        });
-    </script>
+    <!-- Shared Auth JS -->
+    <script src="{{ url_for('static', filename='js/auth-modern.js') }}"></script>
 </body>
-</html> 
+</html>
+
