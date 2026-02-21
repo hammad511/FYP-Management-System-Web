@@ -43,6 +43,8 @@ RENDER_DATA_DIR = os.environ.get('RENDER_DATA_DIR', '/opt/render/project/data')
 # File upload configuration
 if os.environ.get('RENDER'):
     UPLOAD_FOLDER = os.path.join(RENDER_DATA_DIR, 'uploads')
+elif os.environ.get('VERCEL'):
+    UPLOAD_FOLDER = '/tmp/uploads'
 else:
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'zip', 'rar', 'png', 'jpg', 'jpeg'}
@@ -52,28 +54,33 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-# To switch to MySQL or PostgreSQL, change the following line:
-# For MySQL: app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://username:password@localhost/dbname'
-# For PostgreSQL: app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://username:password@localhost/dbname'
 # Database configuration
-if os.environ.get('RENDER'):
-    # Render persistent disk – data survives re-deploys
+# Priority: DATABASE_URL env var (Supabase/PostgreSQL) > SQLite fallback
+_database_url = os.environ.get('DATABASE_URL')
+if _database_url:
+    # Supabase / external PostgreSQL
+    # Fix Heroku/Supabase URI scheme: postgres:// → postgresql://
+    if _database_url.startswith('postgres://'):
+        _database_url = _database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = _database_url
+elif os.environ.get('RENDER'):
     db_path = os.path.join(RENDER_DATA_DIR, 'fyp.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-elif os.environ.get('VERCEL'):
-    # Vercel file system is read-only, except for /tmp
-    # NOTE: Data in /tmp is ephemeral and will be lost!
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/fyp.db'
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fyp.db'
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Database connection settings
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'connect_args': {'check_same_thread': False},
-    'pool_pre_ping': True,      # Verify connections are alive before using them
-}
+_engine_opts = {'pool_pre_ping': True}
+if 'sqlite' in app.config.get('SQLALCHEMY_DATABASE_URI', ''):
+    _engine_opts['connect_args'] = {'check_same_thread': False}
+else:
+    # PostgreSQL connection pool settings
+    _engine_opts['pool_size'] = 5
+    _engine_opts['max_overflow'] = 10
+    _engine_opts['pool_recycle'] = 300
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = _engine_opts
 
 # Security configuration for session cookies
 # Secure cookies in production (HTTPS), allow HTTP for local dev.
@@ -2292,9 +2299,8 @@ def admin_users():
     if current_user.role != "admin":
         flash("Access denied.")
         return redirect(url_for('index'))
-    
-    users = User.query.all()
-    return render_template('admin_users.html', users=users)
+    # User management is in the admin dashboard (dashboard_admin_modern) #users section
+    return redirect(url_for('dashboard_admin') + '#users')
 
 @app.route('/admin/add_user', methods=['POST'])
 @login_required
@@ -4609,23 +4615,20 @@ if os.environ.get('RENDER'):
         except Exception as e:
             print(f"Render Init Error: {e}")
 
-# Vercel deployment initialization
-if os.environ.get('VERCEL'):
+# Vercel / Production deployment initialization (runs on cold start)
+if os.environ.get('VERCEL') or os.environ.get('DATABASE_URL'):
     with app.app_context():
         try:
-            # Create tables in /tmp database (configured in URI)
             db.create_all()
-            
-            # Simple check/seed for admin to ensure app is usable
-            # Note: This runs on every cold start if /tmp is wiped, so we check existence
+            # Seed default admin if missing
             if not User.query.filter_by(email='admin@example.com').first():
                 admin = User(email='admin@example.com', first_name='Admin', last_name='User', role='admin')
                 admin.set_password('admin123')
                 db.session.add(admin)
                 db.session.commit()
-                print("Vercel: Admin user created.")
+                print("Production: Admin user created.")
         except Exception as e:
-            print(f"Vercel Init Error: {e}")
+            print(f"Production Init Error: {e}")
 
 if __name__ == '__main__':
     with app.app_context():
