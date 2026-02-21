@@ -102,14 +102,20 @@
                                 <i class="bi bi-kanban me-3"></i>My Project
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a href="#milestones" class="nav-link section-link" data-section="milestones">
-                                <i class="bi bi-flag me-3"></i>Milestones
-                            </a>
-                        </li>
+
                         <li class="nav-item">
                             <a href="#feedback" class="nav-link section-link" data-section="feedback">
                                 <i class="bi bi-chat-left-text me-3"></i>Supervisor Remarks
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#submissions" class="nav-link section-link" data-section="submissions">
+                                <i class="bi bi-cloud-arrow-up me-3"></i>Submissions
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#assigned-work" class="nav-link section-link" data-section="assigned-work">
+                                <i class="bi bi-list-task me-3"></i>Assigned Work
                             </a>
                         </li>
                         <li class="nav-item">
@@ -152,9 +158,9 @@
                             <div class="stat-label">Today's Classes</div>
                         </div>
                         <div class="stat-card warning">
-                            <i class="bi bi-flag"></i>
-                            <div class="stat-value">{{ upcoming_milestones|length }}</div>
-                            <div class="stat-label">Upcoming Milestones</div>
+                            <i class="bi bi-list-task"></i>
+                            <div class="stat-value">{{ assigned_works|length }}</div>
+                            <div class="stat-label">Assigned Tasks</div>
                         </div>
                         <div class="stat-card danger">
                             <i class="bi bi-chat-left-text"></i>
@@ -175,10 +181,10 @@
                             <h5>My Project</h5>
                             <p>View FYP details</p>
                         </a>
-                        <a href="#" class="quick-action-card section-link" data-section="milestones">
-                            <i class="bi bi-flag"></i>
-                            <h5>Milestones</h5>
-                            <p>Track deadlines</p>
+                        <a href="#" class="quick-action-card section-link" data-section="assigned-work">
+                            <i class="bi bi-list-task"></i>
+                            <h5>Assigned Work</h5>
+                            <p>Track your tasks</p>
                         </a>
                         <a href="#" class="quick-action-card section-link" data-section="feedback">
                             <i class="bi bi-chat-quote"></i>
@@ -325,69 +331,6 @@
                     {% endif %}
                 </div>
 
-                <!-- Milestones Section -->
-                <div id="milestones" class="content-section">
-                    <h2 class="mb-4">Project Milestones</h2>
-                    {% if upcoming_milestones|length > 0 %}
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <span class="badge bg-primary fs-6 me-2">{{ upcoming_milestones|length }}</span>
-                            <span class="text-muted">Total Milestones</span>
-                        </div>
-                        <div>
-                            {% set completed_count = upcoming_milestones|selectattr('completed')|list|length %}
-                            <span class="badge bg-success me-1">{{ completed_count }} Completed</span>
-                            <span class="badge bg-warning text-dark">{{ upcoming_milestones|length - completed_count }} Remaining</span>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-body p-0">
-                            <ul class="list-group list-group-flush">
-                                {% for milestone in upcoming_milestones %}
-                                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                        <div>
-                                            <h6 class="mb-0 {% if milestone.completed %}text-decoration-line-through text-muted{% endif %}">
-                                                {% if milestone.completed %}
-                                                <i class="bi bi-check-circle-fill text-success me-1"></i>
-                                                {% elif milestone.status == 'Late' %}
-                                                <i class="bi bi-exclamation-circle-fill text-danger me-1"></i>
-                                                {% else %}
-                                                <i class="bi bi-clock text-warning me-1"></i>
-                                                {% endif %}
-                                                {{ milestone.title }}
-                                            </h6>
-                                            {% if milestone.description %}
-                                            <small class="text-muted">{{ milestone.description }}</small><br>
-                                            {% endif %}
-                                            <small class="text-muted">Due: {{ milestone.due_date }}</small>
-                                        </div>
-                                        {% if milestone.completed %}
-                                            <span class="badge bg-success rounded-pill fs-6"><i class="bi bi-check-lg me-1"></i>Done</span>
-                                        {% elif milestone.status == 'Late' %}
-                                            <span class="badge bg-danger rounded-pill fs-6">Overdue</span>
-                                        {% elif milestone.days_left <= 0 %}
-                                            <span class="badge bg-danger rounded-pill fs-6">Overdue</span>
-                                        {% elif milestone.days_left <= 7 %}
-                                            <span class="badge bg-danger rounded-pill fs-6">{{ milestone.days_left }} days left</span>
-                                        {% elif milestone.days_left <= 14 %}
-                                            <span class="badge bg-warning text-dark rounded-pill fs-6">{{ milestone.days_left }} days left</span>
-                                        {% else %}
-                                            <span class="badge bg-primary rounded-pill fs-6">{{ milestone.days_left }} days left</span>
-                                        {% endif %}
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5 text-muted">
-                        <i class="bi bi-flag" style="font-size: 3rem;"></i>
-                        <p class="mt-3">No milestones set yet.</p>
-                        <p class="small">Your supervisor will add milestones for your project.</p>
-                    </div>
-                    {% endif %}
-                </div>
-
                 <!-- Feedback Section -->
                 <div id="feedback" class="content-section">
                     <h2 class="mb-4">Supervisor Remarks</h2>
@@ -435,6 +378,288 @@
                             <p class="small">Your supervisor's remarks will appear here.</p>
                         </div>
                     {% endif %}
+                </div>
+
+                <!-- Submissions Section -->
+                <div id="submissions" class="content-section">
+                    <h2 class="mb-4">Submit Your Work</h2>
+
+                    {% if student_group %}
+                    <!-- Upload Form -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-cloud-arrow-up me-2"></i>Upload New Submission</h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ url_for('student_submit_work') }}" method="POST" enctype="multipart/form-data">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="submission_title" class="form-label">Title <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="submission_title" name="submission_title" required placeholder="e.g., Progress Report - Week 5">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="submission_type" class="form-label">Submission Type</label>
+                                        <select class="form-select" id="submission_type" name="submission_type">
+                                            <option value="General">General</option>
+                                            <option value="Proposal">Proposal</option>
+                                            <option value="Progress Report">Progress Report</option>
+                                            <option value="Final Report">Final Report</option>
+                                            <option value="Code">Code / Source Files</option>
+                                            <option value="Presentation">Presentation</option>
+                                            <option value="Documentation">Documentation</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="submission_description" class="form-label">Description (Optional)</label>
+                                    <textarea class="form-control" id="submission_description" name="submission_description" rows="2" placeholder="Brief description of what you're submitting..."></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="submission_file" class="form-label">File <span class="text-danger">*</span></label>
+                                    <input type="file" class="form-control" id="submission_file" name="submission_file" required accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.rar,.png,.jpg,.jpeg">
+                                    <div class="form-text">
+                                        Accepted formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, ZIP, RAR, PNG, JPG. Max size: 16 MB.
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-upload me-2"></i>Submit
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Previous Submissions -->
+                    <div class="card">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-folder2-open me-2"></i>My Submissions</h5>
+                            <span class="badge bg-primary">{{ submissions|length }} file{{ 's' if submissions|length != 1 else '' }}</span>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if submissions %}
+                            <div class="table-responsive">
+                                <table class="table table-hover m-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Type</th>
+                                            <th>File</th>
+                                            <th>Size</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sub in submissions %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ sub.title }}</strong>
+                                                {% if sub.description %}
+                                                <br><small class="text-muted">{{ sub.description[:60] }}{{ '...' if sub.description|length > 60 else '' }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td><span class="badge bg-info">{{ sub.submission_type }}</span></td>
+                                            <td>
+                                                <i class="bi {% if sub.file_type == 'pdf' %}bi-file-earmark-pdf text-danger{% elif sub.file_type in ['doc', 'docx'] %}bi-file-earmark-word text-primary{% elif sub.file_type in ['ppt', 'pptx'] %}bi-file-earmark-ppt text-warning{% elif sub.file_type in ['zip', 'rar'] %}bi-file-earmark-zip text-secondary{% elif sub.file_type in ['png', 'jpg', 'jpeg'] %}bi-file-earmark-image text-success{% else %}bi-file-earmark text-muted{% endif %} me-1"></i>
+                                                {{ sub.original_filename }}
+                                            </td>
+                                            <td>{{ sub.file_size_display }}</td>
+                                            <td>{{ sub.created_at.strftime('%b %d, %Y') }}</td>
+                                            <td>
+                                                <span class="badge {% if sub.status == 'Approved' %}bg-success{% elif sub.status == 'Reviewed' %}bg-info{% elif sub.status == 'Rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                                    {{ sub.status }}
+                                                </span>
+                                                {% if sub.feedback %}
+                                                <br><small class="text-muted mt-1" title="{{ sub.feedback }}"><i class="bi bi-chat-dots"></i> Has feedback</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('download_submission', submission_id=sub.id) }}" class="btn btn-sm btn-outline-primary me-1" title="Download">
+                                                    <i class="bi bi-download"></i>
+                                                </a>
+                                                {% if sub.status == 'Submitted' %}
+                                                <form action="{{ url_for('delete_submission', submission_id=sub.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this submission?')">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if sub.feedback %}
+                                        <tr>
+                                            <td colspan="7" class="bg-light ps-4">
+                                                <small><i class="bi bi-chat-left-quote me-1 text-primary"></i><strong>Feedback:</strong> {{ sub.feedback }}</small>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-cloud-arrow-up" style="font-size: 3rem;"></i>
+                                <p class="mt-3">No submissions yet.</p>
+                                <p class="small">Use the form above to upload your work.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>You need to be assigned to a group before you can submit work.
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Assigned Work Section -->
+                <div id="assigned-work" class="content-section">
+                    <h2 class="mb-4">Assigned Work</h2>
+
+                    {% if assigned_works %}
+                    <!-- Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body py-3">
+                                    <i class="bi bi-list-task text-primary" style="font-size: 1.5rem;"></i>
+                                    <h4 class="mt-1 mb-0">{{ assigned_works|length }}</h4>
+                                    <small class="text-muted">Total Tasks</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body py-3">
+                                    <i class="bi bi-hourglass-split text-warning" style="font-size: 1.5rem;"></i>
+                                    <h4 class="mt-1 mb-0">{{ assigned_works|selectattr('status', 'eq', 'Pending')|list|length }}</h4>
+                                    <small class="text-muted">Pending</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body py-3">
+                                    <i class="bi bi-check2-circle text-success" style="font-size: 1.5rem;"></i>
+                                    <h4 class="mt-1 mb-0">{{ (assigned_works|selectattr('status', 'eq', 'Completed')|list|length) + (assigned_works|selectattr('status', 'eq', 'Submitted')|list|length) }}</h4>
+                                    <small class="text-muted">Done/Submitted</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body py-3">
+                                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 1.5rem;"></i>
+                                    <h4 class="mt-1 mb-0">{{ assigned_works|selectattr('status', 'eq', 'Overdue')|list|length }}</h4>
+                                    <small class="text-muted">Overdue</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Work Items -->
+                    {% for work in assigned_works %}
+                    <div class="card mb-3 {% if work.is_overdue %}border-danger{% elif work.status == 'Completed' %}border-success{% elif work.status == 'Submitted' %}border-info{% endif %}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="card-title mb-1">
+                                        <i class="bi {% if work.status == 'Completed' %}bi-check-circle-fill text-success{% elif work.status == 'Submitted' %}bi-send-check text-info{% elif work.is_overdue %}bi-exclamation-circle-fill text-danger{% else %}bi-circle text-secondary{% endif %} me-2"></i>
+                                        {{ work.title }}
+                                    </h5>
+                                    {% if work.description %}
+                                    <p class="text-muted mb-2">{{ work.description }}</p>
+                                    {% endif %}
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <span class="badge bg-info">{{ work.work_type }}</span>
+                                        <span class="badge {% if work.priority == 'Urgent' %}bg-danger{% elif work.priority == 'High' %}bg-warning text-dark{% elif work.priority == 'Medium' %}bg-primary{% else %}bg-secondary{% endif %}">{{ work.priority }}</span>
+                                        {% if work.due_date %}
+                                        <span class="badge {% if work.is_overdue %}bg-danger{% else %}bg-outline-dark border{% endif %}">
+                                            <i class="bi bi-calendar me-1"></i>{{ work.due_date.strftime('%b %d, %Y') }}
+                                        </span>
+                                        {% endif %}
+                                        <span class="badge {% if work.status == 'Completed' %}bg-success{% elif work.status == 'Submitted' %}bg-info{% elif work.status == 'In Progress' %}bg-primary{% elif work.status == 'Overdue' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {{ work.status }}
+                                        </span>
+                                        {% if work.assigned_to %}
+                                        <span class="badge bg-primary"><i class="bi bi-person me-1"></i>Assigned to You</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary"><i class="bi bi-people me-1"></i>Entire Group</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div>
+                                    {% if work.status not in ['Completed', 'Submitted'] %}
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            Update
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            {% if work.status != 'In Progress' %}
+                                            <li>
+                                                <form method="POST" action="{{ url_for('student_update_work', work_id=work.id) }}">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <input type="hidden" name="student_work_status" value="In Progress">
+                                                    <button type="submit" class="dropdown-item"><i class="bi bi-play-circle me-2"></i>Mark In Progress</button>
+                                                </form>
+                                            </li>
+                                            {% endif %}
+                                            <li>
+                                                <button type="button" class="dropdown-item submit-work-btn" data-bs-toggle="modal" data-bs-target="#submitWorkModal" data-id="{{ work.id }}" data-title="{{ work.title }}">
+                                                    <i class="bi bi-send me-2"></i>Mark as Submitted
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if work.student_response %}
+                            <div class="mt-2 p-2 bg-light rounded">
+                                <small class="text-primary"><i class="bi bi-chat-dots me-1"></i><strong>Your Response:</strong> {{ work.student_response }}</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-list-task" style="font-size: 3rem;"></i>
+                        <p class="mt-3">No work has been assigned to you yet.</p>
+                        <p class="small">Your supervisor will assign tasks here when needed.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Submit Work Modal -->
+                <div class="modal fade" id="submitWorkModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" id="submitWorkForm">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="student_work_status" value="Submitted">
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><i class="bi bi-send me-2"></i>Submit Work</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Submitting: <strong id="submitWorkTitle"></strong></p>
+                                    <div class="mb-3">
+                                        <label class="form-label">Response / Notes (Optional)</label>
+                                        <textarea class="form-control" name="student_work_response" rows="3" placeholder="Add any notes for your supervisor..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary"><i class="bi bi-send me-2"></i>Submit</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Resources Section -->
@@ -511,6 +736,16 @@
                     if (sidebarLink) {
                         sidebarLink.classList.add('active');
                     }
+                });
+            });
+
+            // Submit Work Modal population
+            document.querySelectorAll('.submit-work-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const title = this.getAttribute('data-title');
+                    document.getElementById('submitWorkTitle').textContent = title;
+                    document.getElementById('submitWorkForm').action = '/student/update_work/' + id;
                 });
             });
         });

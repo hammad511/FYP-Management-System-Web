@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import os
 from functools import wraps
 import secrets
@@ -35,6 +36,16 @@ else:
 # Initialize CSRF protection
 app.config['WTF_CSRF_TIME_LIMIT'] = 86400  # 24 hours
 csrf = CSRFProtect(app)
+
+# File upload configuration
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'zip', 'rar', 'png', 'jpg', 'jpeg'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload size
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 # To switch to MySQL or PostgreSQL, change the following line:
 # For MySQL: app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://username:password@localhost/dbname'
 # For PostgreSQL: app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://username:password@localhost/dbname'
@@ -469,6 +480,73 @@ class Viva(db.Model):
     
     def __repr__(self):
         return f"Viva for Group {self.group.group_id} on {self.scheduled_date} at {self.scheduled_time}"
+
+class Submission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    filename = db.Column(db.String(300), nullable=False)  # stored filename on disk
+    original_filename = db.Column(db.String(300), nullable=False)  # original user filename
+    file_size = db.Column(db.Integer, default=0)  # size in bytes
+    file_type = db.Column(db.String(20))  # extension
+    submission_type = db.Column(db.String(50), default='General')  # 'Proposal', 'Progress Report', 'Final Report', 'Code', 'Presentation', 'General'
+    status = db.Column(db.String(20), default='Submitted')  # 'Submitted', 'Reviewed', 'Approved', 'Rejected'
+    feedback = db.Column(db.Text, nullable=True)  # supervisor/faculty feedback
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Foreign Keys
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    group_id = db.Column(db.Integer, db.ForeignKey('student_group.id'), nullable=False)
+
+    # Relationships
+    student = db.relationship('User', backref='submissions')
+    group = db.relationship('StudentGroup', backref='submissions')
+
+    def __repr__(self):
+        return f"Submission: {self.title} by Student {self.student_id}"
+
+    @property
+    def file_size_display(self):
+        if self.file_size < 1024:
+            return f"{self.file_size} B"
+        elif self.file_size < 1024 * 1024:
+            return f"{self.file_size / 1024:.1f} KB"
+        else:
+            return f"{self.file_size / (1024 * 1024):.1f} MB"
+
+class AssignedWork(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    due_date = db.Column(db.Date, nullable=True)
+    priority = db.Column(db.String(20), default='Medium')  # Low, Medium, High, Urgent
+    work_type = db.Column(db.String(50), default='General')  # Task, Report, Presentation, Review, Code, Milestone, General
+    status = db.Column(db.String(20), default='Pending')  # Pending, In Progress, Submitted, Completed, Overdue
+    student_response = db.Column(db.Text, nullable=True)  # student notes when marking done
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Foreign Keys
+    group_id = db.Column(db.Integer, db.ForeignKey('student_group.id'), nullable=False)
+    assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # NULL = whole group
+    assigned_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    submission_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=True)  # linked submission
+
+    # Relationships
+    group = db.relationship('StudentGroup', backref='assigned_works')
+    student = db.relationship('User', foreign_keys=[assigned_to], backref='received_works')
+    supervisor = db.relationship('User', foreign_keys=[assigned_by], backref='created_works')
+    linked_submission = db.relationship('Submission', backref='assigned_work_ref')
+
+    def __repr__(self):
+        return f"AssignedWork: {self.title} for Group {self.group_id}"
+
+    @property
+    def is_overdue(self):
+        if self.due_date and self.status not in ('Completed', 'Submitted'):
+            return datetime.date.today() > self.due_date
+        return False
 
 # ============================================
 # DATA INTEGRITY VALIDATORS
@@ -915,11 +993,14 @@ def dashboard_faculty():
     today_schedules.sort(key=lambda x: x['start_time'])
     tomorrow_schedules.sort(key=lambda x: x['start_time'])
     
-    # Get upcoming project milestones from DB for all supervised groups
+    # Get assigned works for all supervised groups
     supervised_group_ids = [g.id for g in supervised_groups]
-    all_milestones = ProjectMilestone.query.filter(
-        ProjectMilestone.group_id.in_(supervised_group_ids)
-    ).order_by(ProjectMilestone.due_date.asc()).all() if supervised_group_ids else []
+    all_assigned_works = AssignedWork.query.filter(
+        AssignedWork.group_id.in_(supervised_group_ids)
+    ).order_by(
+        db.case((AssignedWork.due_date == None, 1), else_=0),
+        AssignedWork.due_date.asc()
+    ).all() if supervised_group_ids else []
     
     # Get vivas for supervised groups
     all_vivas = Viva.query.filter(
@@ -940,9 +1021,9 @@ def dashboard_faculty():
     if all_project_details:
         total_progress = sum(pd.progress for pd in all_project_details.values() if pd.progress)
         project_progress = total_progress // len(all_project_details) if all_project_details else 0
-    elif all_milestones:
-        completed = sum(1 for m in all_milestones if m.status == 'Completed')
-        project_progress = int((completed / len(all_milestones)) * 100) if all_milestones else 0
+    elif all_assigned_works:
+        completed = sum(1 for w in all_assigned_works if w.status == 'Completed')
+        project_progress = int((completed / len(all_assigned_works)) * 100) if all_assigned_works else 0
     else:
         project_progress = 0
     
@@ -955,6 +1036,9 @@ def dashboard_faculty():
     assigned_groups_count = len(assigned_groups)
     pending_evaluations_count = ProjectStatus.query.filter_by(teacher_id=current_user.id, status='Pending').count()
     
+    # Get submissions for supervised groups
+    all_submissions = Submission.query.filter(Submission.group_id.in_(supervised_group_ids)).order_by(Submission.created_at.desc()).all() if supervised_group_ids else []
+    
     return render_template('dashboard_faculty.html', 
                           current_user=current_user,
                           today_schedules=today_schedules,
@@ -966,11 +1050,12 @@ def dashboard_faculty():
                           today=today,
                           assigned_groups_count=assigned_groups_count,
                           pending_evaluations_count=pending_evaluations_count,
-                          all_milestones=all_milestones,
+                          all_assigned_works=all_assigned_works,
                           all_vivas=all_vivas,
                           all_project_statuses=all_project_statuses,
                           all_project_details=all_project_details,
-                          project_progress=project_progress)
+                          project_progress=project_progress,
+                          all_submissions=all_submissions)
 
 @app.route('/dashboard_admin')
 @login_required
@@ -1310,9 +1395,8 @@ def dashboard_supervisor():
                     'student_name': student_name
                 })
     
-    # Get milestones for all supervised groups
+    # Get milestones for all supervised groups (kept for faculty)
     group_ids = [g.id for g in student_groups]
-    all_milestones = ProjectMilestone.query.filter(ProjectMilestone.group_id.in_(group_ids)).order_by(ProjectMilestone.due_date.asc()).all() if group_ids else []
     
     # Get vivas for supervised groups
     all_vivas = Viva.query.filter(Viva.group_id.in_(group_ids)).order_by(Viva.scheduled_date.asc()).all() if group_ids else []
@@ -1323,13 +1407,33 @@ def dashboard_supervisor():
     # Get project details (progress)
     all_project_details = {pd.group_id: pd for pd in ProjectDetails.query.filter(ProjectDetails.group_id.in_(group_ids)).all()} if group_ids else {}
     
+    # Get submissions for supervised groups
+    all_submissions = Submission.query.filter(Submission.group_id.in_(group_ids)).order_by(Submission.created_at.desc()).all() if group_ids else []
+    
+    # Get assigned works for supervised groups
+    all_assigned_works = AssignedWork.query.filter(AssignedWork.group_id.in_(group_ids)).order_by(AssignedWork.created_at.desc()).all() if group_ids else []
+    
+    # Auto-mark overdue works
+    for work in all_assigned_works:
+        if work.is_overdue and work.status == 'Pending':
+            work.status = 'Overdue'
+    db.session.commit()
+
+    # Build a dict of group members for the assign-work form
+    group_members = {}
+    for g in student_groups:
+        members = GroupMember.query.filter_by(group_id=g.id).all()
+        group_members[g.id] = [{'id': m.user_id, 'name': f"{m.user.first_name} {m.user.last_name}"} for m in members]
+
     return render_template('dashboard_supervisor.html', 
                            supervised_groups=student_groups,
                            all_remarks=all_remarks,
-                           all_milestones=all_milestones,
                            all_vivas=all_vivas,
                            all_project_statuses=all_project_statuses,
-                           all_project_details=all_project_details)
+                           all_project_details=all_project_details,
+                           all_submissions=all_submissions,
+                           all_assigned_works=all_assigned_works,
+                           group_members=group_members)
 
 @app.route('/dashboard/student')
 @role_required('student')
@@ -1404,34 +1508,32 @@ def dashboard_student():
     for day in days:
         schedules_by_day[day].sort(key=lambda x: x['time'])
     
-    # Get real milestones from DB for the student's group
-    upcoming_milestones = []
+    # Get progress for student's group
     project_progress = 0
     if student_group:
-        milestones = ProjectMilestone.query.filter_by(group_id=student_group.id).order_by(ProjectMilestone.due_date.asc()).all()
-        now = datetime.datetime.now().date()
-        for m in milestones:
-            days_left = (m.due_date - now).days
-            upcoming_milestones.append({
-                'id': m.id,
-                'title': m.title,
-                'description': m.description,
-                'due_date': m.due_date.strftime('%b %d, %Y'),
-                'days_left': days_left,
-                'status': m.status,
-                'completed': m.status == 'Completed'
-            })
-        
         # Get real progress from ProjectDetails
         details = ProjectDetails.query.filter_by(group_id=student_group.id).first()
         if details:
             project_progress = details.progress
-        else:
-            # Calculate progress from milestones if no explicit progress set
-            if milestones:
-                completed_count = sum(1 for m in milestones if m.status == 'Completed')
-                project_progress = int((completed_count / len(milestones)) * 100)
     
+    # Get student's submissions
+    submissions = []
+    if student_group:
+        submissions = Submission.query.filter_by(group_id=student_group.id, student_id=current_user.id).order_by(Submission.created_at.desc()).all()
+
+    # Get assigned works for this student
+    assigned_works = []
+    if student_group:
+        assigned_works = AssignedWork.query.filter(
+            AssignedWork.group_id == student_group.id,
+            db.or_(AssignedWork.assigned_to == current_user.id, AssignedWork.assigned_to == None)
+        ).order_by(db.case((AssignedWork.due_date == None, 1), else_=0), AssignedWork.due_date.asc(), AssignedWork.created_at.desc()).all()
+        # Auto-mark overdue
+        for w in assigned_works:
+            if w.is_overdue and w.status == 'Pending':
+                w.status = 'Overdue'
+        db.session.commit()
+
     return render_template(
         'dashboard_student.html',
         student_group=student_group,
@@ -1441,8 +1543,9 @@ def dashboard_student():
         tomorrow_schedules=schedules_by_day.get(tomorrow, []),
         today=today,
         tomorrow=tomorrow,
-        upcoming_milestones=upcoming_milestones,
         project_progress=project_progress,
+        submissions=submissions,
+        assigned_works=assigned_works,
         current_user=current_user
     )
 
@@ -1517,104 +1620,344 @@ def add_remark():
         flash(f"Unexpected error: {str(e)}", 'danger')
         return redirect(url_for('dashboard'))
 
-# ========== EVALUATION ROUTES ==========
+# ========== SUBMISSION ROUTES ==========
 
-@app.route('/supervisor/add_milestone', methods=['POST'])
+@app.route('/student/submit_work', methods=['POST'])
 @login_required
-def supervisor_add_milestone():
-    if current_user.role != 'supervisor':
+def student_submit_work():
+    if current_user.role != 'student':
         flash("Access denied.", 'danger')
         return redirect(url_for('dashboard'))
     
-    group_id = request.form.get('group_id')
-    title = request.form.get('title', '').strip()
-    description = request.form.get('description', '').strip()
-    due_date_str = request.form.get('due_date')
+    # Check if student is in a group
+    membership = GroupMember.query.filter_by(user_id=current_user.id).first()
+    if not membership:
+        flash("You must be assigned to a group before submitting work.", 'warning')
+        return redirect(url_for('dashboard'))
+    
+    title = request.form.get('submission_title', '').strip()
+    description = request.form.get('submission_description', '').strip()
+    submission_type = request.form.get('submission_type', 'General')
+    file = request.files.get('submission_file')
+    
+    if not title:
+        flash("Submission title is required.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    if not file or file.filename == '':
+        flash("Please select a file to upload.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    if not allowed_file(file.filename):
+        flash(f"File type not allowed. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}", 'danger')
+        return redirect(url_for('dashboard'))
     
     try:
-        group = StudentGroup.query.get(group_id)
+        original_filename = secure_filename(file.filename)
+        # Create unique filename to avoid conflicts
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        stored_filename = f"{current_user.id}_{membership.group_id}_{timestamp}_{original_filename}"
+        
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], stored_filename)
+        file.save(filepath)
+        file_size = os.path.getsize(filepath)
+        file_ext = original_filename.rsplit('.', 1)[1].lower() if '.' in original_filename else ''
+        
+        submission = Submission(
+            title=title,
+            description=description,
+            filename=stored_filename,
+            original_filename=original_filename,
+            file_size=file_size,
+            file_type=file_ext,
+            submission_type=submission_type,
+            student_id=current_user.id,
+            group_id=membership.group_id
+        )
+        db.session.add(submission)
+        db.session.commit()
+        
+        flash(f"'{title}' submitted successfully!", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error uploading file: {str(e)}", 'danger')
+    
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/submission/download/<int:submission_id>')
+@login_required
+def download_submission(submission_id):
+    submission = Submission.query.get_or_404(submission_id)
+    
+    # Access control: student (own group), supervisor (own groups), faculty/teacher, admin
+    if current_user.role == 'student':
+        membership = GroupMember.query.filter_by(user_id=current_user.id, group_id=submission.group_id).first()
+        if not membership:
+            flash("Access denied.", 'danger')
+            return redirect(url_for('dashboard'))
+    elif current_user.role == 'supervisor':
+        group = StudentGroup.query.get(submission.group_id)
         if not group or group.supervisor_id != current_user.id:
-            flash("Invalid group or access denied.", 'danger')
+            flash("Access denied.", 'danger')
             return redirect(url_for('dashboard'))
+    elif current_user.role not in ('faculty', 'teacher', 'admin'):
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    return send_from_directory(
+        app.config['UPLOAD_FOLDER'],
+        submission.filename,
+        as_attachment=True,
+        download_name=submission.original_filename
+    )
+
+
+@app.route('/student/delete_submission/<int:submission_id>', methods=['POST'])
+@login_required
+def delete_submission(submission_id):
+    if current_user.role != 'student':
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    submission = Submission.query.get_or_404(submission_id)
+    
+    if submission.student_id != current_user.id:
+        flash("You can only delete your own submissions.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    if submission.status in ('Approved', 'Reviewed'):
+        flash("Cannot delete a submission that has already been reviewed.", 'warning')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        # Delete the file from disk
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], submission.filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
         
-        if not title:
-            flash("Milestone title is required.", 'danger')
+        db.session.delete(submission)
+        db.session.commit()
+        flash("Submission deleted successfully.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error deleting submission: {str(e)}", 'danger')
+    
+    return redirect(url_for('dashboard'))
+
+
+@app.route('/submission/review/<int:submission_id>', methods=['POST'])
+@login_required
+def review_submission(submission_id):
+    if current_user.role not in ('supervisor', 'faculty', 'teacher', 'admin'):
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    submission = Submission.query.get_or_404(submission_id)
+    
+    # Supervisor can only review their own groups' submissions
+    if current_user.role == 'supervisor':
+        group = StudentGroup.query.get(submission.group_id)
+        if not group or group.supervisor_id != current_user.id:
+            flash("You can only review submissions from your own groups.", 'danger')
             return redirect(url_for('dashboard'))
-        
-        due_date = datetime.datetime.strptime(due_date_str, '%Y-%m-%d').date()
-        
-        milestone = ProjectMilestone(
+    
+    new_status = request.form.get('status', 'Reviewed')
+    feedback = request.form.get('feedback', '').strip()
+    
+    if new_status not in ('Reviewed', 'Approved', 'Rejected'):
+        flash("Invalid status.", 'danger')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        submission.status = new_status
+        submission.feedback = feedback
+        db.session.commit()
+        flash(f"Submission marked as '{new_status}'.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error updating submission: {str(e)}", 'danger')
+    
+    return redirect(url_for('dashboard'))
+
+# ========== ASSIGN WORK ROUTES ==========
+
+@app.route('/supervisor/assign_work', methods=['POST'])
+@login_required
+def assign_work():
+    if current_user.role != 'supervisor':
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+
+    group_id = request.form.get('work_group_id', type=int)
+    title = request.form.get('work_title', '').strip()
+    description = request.form.get('work_description', '').strip()
+    due_date_str = request.form.get('work_due_date', '').strip()
+    priority = request.form.get('work_priority', 'Medium')
+    work_type = request.form.get('work_type', 'General')
+    assigned_to_val = request.form.get('work_assigned_to', '').strip()  # '' = whole group, or user_id
+
+    if not group_id or not title:
+        flash("Group and title are required.", 'danger')
+        return redirect(url_for('dashboard'))
+
+    # Verify supervisor owns this group
+    group = StudentGroup.query.get(group_id)
+    if not group or group.supervisor_id != current_user.id:
+        flash("You can only assign work to your own groups.", 'danger')
+        return redirect(url_for('dashboard'))
+
+    due_date = None
+    if due_date_str:
+        try:
+            due_date = datetime.datetime.strptime(due_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash("Invalid date format.", 'danger')
+            return redirect(url_for('dashboard'))
+
+    assigned_to_id = None
+    if assigned_to_val:
+        assigned_to_id = int(assigned_to_val)
+        # Verify the student is actually in the group
+        member = GroupMember.query.filter_by(user_id=assigned_to_id, group_id=group_id).first()
+        if not member:
+            flash("Selected student is not in this group.", 'danger')
+            return redirect(url_for('dashboard'))
+
+    if priority not in ('Low', 'Medium', 'High', 'Urgent'):
+        priority = 'Medium'
+
+    try:
+        work = AssignedWork(
             title=title,
             description=description,
             due_date=due_date,
-            status='Pending',
-            group_id=group.id
+            priority=priority,
+            work_type=work_type,
+            group_id=group_id,
+            assigned_to=assigned_to_id,
+            assigned_by=current_user.id
         )
-        db.session.add(milestone)
+        db.session.add(work)
         db.session.commit()
-        
-        logger.info(f"Milestone '{title}' added for group {group.group_id} by {current_user.email}")
-        flash(f"Milestone '{title}' added successfully.", 'success')
+
+        student_name = "Entire Group"
+        if assigned_to_id:
+            student = User.query.get(assigned_to_id)
+            student_name = f"{student.first_name} {student.last_name}" if student else "Student"
+
+        flash(f"Work '{title}' assigned to {student_name} successfully!", 'success')
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error adding milestone: {str(e)}")
-        flash(f"Error adding milestone: {str(e)}", 'danger')
-    
+        flash(f"Error assigning work: {str(e)}", 'danger')
+
     return redirect(url_for('dashboard'))
 
-@app.route('/supervisor/update_milestone/<int:milestone_id>', methods=['POST'])
+
+@app.route('/supervisor/edit_work/<int:work_id>', methods=['POST'])
 @login_required
-def supervisor_update_milestone(milestone_id):
+def edit_assigned_work(work_id):
     if current_user.role != 'supervisor':
         flash("Access denied.", 'danger')
         return redirect(url_for('dashboard'))
-    
+
+    work = AssignedWork.query.get_or_404(work_id)
+    group = StudentGroup.query.get(work.group_id)
+    if not group or group.supervisor_id != current_user.id:
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+
+    new_status = request.form.get('edit_work_status', '').strip()
+    new_title = request.form.get('edit_work_title', '').strip()
+    new_description = request.form.get('edit_work_description', '').strip()
+    new_due_date_str = request.form.get('edit_work_due_date', '').strip()
+    new_priority = request.form.get('edit_work_priority', '').strip()
+
     try:
-        milestone = ProjectMilestone.query.get_or_404(milestone_id)
-        group = StudentGroup.query.get(milestone.group_id)
-        
-        if not group or group.supervisor_id != current_user.id:
-            flash("Access denied.", 'danger')
-            return redirect(url_for('dashboard'))
-        
-        new_status = request.form.get('status', 'Pending')
-        if new_status in ('Pending', 'Completed', 'Late'):
-            milestone.status = new_status
-            db.session.commit()
-            flash(f"Milestone '{milestone.title}' marked as {new_status}.", 'success')
-        else:
-            flash("Invalid status.", 'danger')
+        if new_title:
+            work.title = new_title
+        if new_description is not None:
+            work.description = new_description
+        if new_status and new_status in ('Pending', 'In Progress', 'Submitted', 'Completed', 'Overdue'):
+            work.status = new_status
+        if new_priority and new_priority in ('Low', 'Medium', 'High', 'Urgent'):
+            work.priority = new_priority
+        if new_due_date_str:
+            work.due_date = datetime.datetime.strptime(new_due_date_str, '%Y-%m-%d').date()
+
+        db.session.commit()
+        flash(f"Work '{work.title}' updated.", 'success')
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error updating milestone: {str(e)}")
-        flash(f"Error: {str(e)}", 'danger')
-    
+        flash(f"Error updating work: {str(e)}", 'danger')
+
     return redirect(url_for('dashboard'))
 
-@app.route('/supervisor/delete_milestone/<int:milestone_id>', methods=['POST'])
+
+@app.route('/supervisor/delete_work/<int:work_id>', methods=['POST'])
 @login_required
-def supervisor_delete_milestone(milestone_id):
+def delete_assigned_work(work_id):
     if current_user.role != 'supervisor':
         flash("Access denied.", 'danger')
         return redirect(url_for('dashboard'))
-    
+
+    work = AssignedWork.query.get_or_404(work_id)
+    group = StudentGroup.query.get(work.group_id)
+    if not group or group.supervisor_id != current_user.id:
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+
     try:
-        milestone = ProjectMilestone.query.get_or_404(milestone_id)
-        group = StudentGroup.query.get(milestone.group_id)
-        
-        if not group or group.supervisor_id != current_user.id:
-            flash("Access denied.", 'danger')
-            return redirect(url_for('dashboard'))
-        
-        title = milestone.title
-        db.session.delete(milestone)
+        title = work.title
+        db.session.delete(work)
         db.session.commit()
-        flash(f"Milestone '{title}' deleted.", 'success')
+        flash(f"Work '{title}' deleted.", 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f"Error: {str(e)}", 'danger')
-    
+        flash(f"Error deleting work: {str(e)}", 'danger')
+
     return redirect(url_for('dashboard'))
+
+
+@app.route('/student/update_work/<int:work_id>', methods=['POST'])
+@login_required
+def student_update_work(work_id):
+    if current_user.role != 'student':
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+
+    work = AssignedWork.query.get_or_404(work_id)
+
+    # Verify: student must be in the group AND either assigned_to is this student or the whole group
+    membership = GroupMember.query.filter_by(user_id=current_user.id, group_id=work.group_id).first()
+    if not membership:
+        flash("Access denied.", 'danger')
+        return redirect(url_for('dashboard'))
+    if work.assigned_to and work.assigned_to != current_user.id:
+        flash("This work is not assigned to you.", 'danger')
+        return redirect(url_for('dashboard'))
+
+    new_status = request.form.get('student_work_status', '').strip()
+    response_text = request.form.get('student_work_response', '').strip()
+
+    if new_status not in ('In Progress', 'Submitted'):
+        flash("Invalid status update.", 'danger')
+        return redirect(url_for('dashboard'))
+
+    try:
+        work.status = new_status
+        if response_text:
+            work.student_response = response_text
+        db.session.commit()
+        flash(f"Work '{work.title}' marked as '{new_status}'.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error updating work: {str(e)}", 'danger')
+
+    return redirect(url_for('dashboard'))
+
+
+# ========== EVALUATION ROUTES ==========
 
 @app.route('/supervisor/update_progress', methods=['POST'])
 @login_required

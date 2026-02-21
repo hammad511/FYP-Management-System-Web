@@ -118,6 +118,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a href="#submissions" class="nav-link section-link" data-section="submissions">
+                                <i class="bi bi-cloud-arrow-up me-3"></i>Submissions
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a href="#schedule" class="nav-link section-link" data-section="schedule">
                                 <i class="bi bi-calendar-event me-3"></i>Schedule
                             </a>
@@ -153,7 +158,7 @@
                     <div class="stats-grid">
                         <div class="stat-card primary">
                             <i class="bi bi-kanban"></i>
-                            <div class="stat-value">{{ supervised_groups|length if supervised_groups is defined else groups|length if groups is defined else 0 }}</div>
+                            <div class="stat-value">{{ groups|length }}</div>
                             <div class="stat-label">Projects Supervised</div>
                         </div>
                         <div class="stat-card success">
@@ -204,7 +209,7 @@
 
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <div>
-                            <span class="badge bg-primary fs-6 me-2">{{ supervised_groups|length }}</span>
+                            <span class="badge bg-primary fs-6 me-2">{{ groups|length }}</span>
                             <span class="text-muted">Active Projects</span>
                         </div>
                         <div class="d-flex">
@@ -240,25 +245,42 @@
                                             <th>Members</th>
                                             <th>Progress</th>
                                             <th>Status</th>
-                                            <th>Next Milestone</th>
+                                            <th>Next Task</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for group in supervised_groups %}
+                                        {% for group in groups %}
+                                        {% set pd = all_project_details.get(group.id) %}
+                                        {% set prog = pd.progress if pd and pd.progress else 0 %}
+                                        {% set ps = all_project_statuses.get(group.id) %}
+                                        {% set group_works_list = all_assigned_works|selectattr('group_id', 'eq', group.id)|rejectattr('status', 'eq', 'Completed')|list %}
+                                        {% set next_task = group_works_list|first if group_works_list else None %}
                                         <tr>
                                             <td>{{ group.group_id }}</td>
                                             <td>{{ group.project_title }}</td>
-                                            <td>3</td>
+                                            <td>{{ group.members|length }}</td>
                                             <td>
                                                 <div class="progress" style="width: 100px;">
-                                                    <div class="progress-bar bg-success" role="progressbar"
-                                                        style="width: 65%"></div>
+                                                    <div class="progress-bar {% if prog >= 75 %}bg-success{% elif prog >= 50 %}bg-info{% elif prog >= 25 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar"
+                                                        style="width: {{ prog }}%"></div>
                                                 </div>
-                                                <small>65%</small>
+                                                <small>{{ prog }}%</small>
                                             </td>
-                                            <td><span class="badge bg-success">On Track</span></td>
-                                            <td>Oct 15 - Progress Report</td>
+                                            <td>
+                                                {% if ps %}
+                                                <span class="badge {% if ps.status == 'Accepted' %}bg-success{% elif ps.status == 'Conditionally Accepted' %}bg-warning text-dark{% elif ps.status == 'Deferred' %}bg-danger{% else %}bg-secondary{% endif %}">{{ ps.status }}</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">Not Evaluated</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if next_task %}
+                                                {{ next_task.due_date.strftime('%b %d') if next_task.due_date else 'TBD' }} - {{ next_task.title }}
+                                                {% else %}
+                                                <span class="text-muted">No pending tasks</span>
+                                                {% endif %}
+                                            </td>
                                             <td>
                                                 <button class="btn btn-sm btn-outline-primary view-project-btn"
                                                     data-group-id="{{ group.id }}" data-group-num="{{ group.group_id }}"
@@ -324,9 +346,9 @@
                             <h5 class="mb-0"><i class="bi bi-chat-quote me-2"></i> Recent Remarks</h5>
                         </div>
                         <div class="card-body">
-                            {% if all_remarks %}
+                            {% if remarks %}
                             <div class="list-group">
-                                {% for remark in all_remarks %}
+                                {% for remark in remarks %}
                                 <div class="list-group-item">
                                     <div class="d-flex justify-content-between">
                                         <h6 class="mb-1">{{ remark.group_id }} - {{ remark.project_title }}</h6>
@@ -351,35 +373,47 @@
                                     <h5 class="mb-0">Project Status Distribution</h5>
                                 </div>
                                 <div class="card-body">
+                                    {% set total_projects = groups|length %}
+                                    {% set accepted_count = all_project_statuses.values()|selectattr('status', 'eq', 'Accepted')|list|length %}
+                                    {% set conditional_count = all_project_statuses.values()|selectattr('status', 'eq', 'Conditionally Accepted')|list|length %}
+                                    {% set deferred_count = all_project_statuses.values()|selectattr('status', 'eq', 'Deferred')|list|length %}
+                                    {% set pending_count = total_projects - accepted_count - conditional_count - deferred_count %}
                                     <div class="text-center my-4">
                                         <div class="d-inline-block p-3 rounded-circle"
                                             style="background-color: #eee; width: 200px; height: 200px; position: relative;">
                                             <div class="position-absolute top-50 start-50 translate-middle">
-                                                <h3>7</h3>
+                                                <h3>{{ total_projects }}</h3>
                                                 <p class="text-muted mb-0">Projects</p>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="mt-4">
                                         <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <div><i class="bi bi-circle-fill text-success me-2"></i> On Track</div>
+                                            <div><i class="bi bi-circle-fill text-success me-2"></i> Accepted</div>
                                             <div>
-                                                <span class="badge bg-secondary">4</span>
-                                                <span class="ms-2">57%</span>
+                                                <span class="badge bg-secondary">{{ accepted_count }}</span>
+                                                <span class="ms-2">{{ ((accepted_count / total_projects * 100)|round|int) if total_projects > 0 else 0 }}%</span>
                                             </div>
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <div><i class="bi bi-circle-fill text-warning me-2"></i> At Risk</div>
+                                            <div><i class="bi bi-circle-fill text-warning me-2"></i> Conditionally Accepted</div>
                                             <div>
-                                                <span class="badge bg-secondary">2</span>
-                                                <span class="ms-2">29%</span>
+                                                <span class="badge bg-secondary">{{ conditional_count }}</span>
+                                                <span class="ms-2">{{ ((conditional_count / total_projects * 100)|round|int) if total_projects > 0 else 0 }}%</span>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div><i class="bi bi-circle-fill text-danger me-2"></i> Deferred</div>
+                                            <div>
+                                                <span class="badge bg-secondary">{{ deferred_count }}</span>
+                                                <span class="ms-2">{{ ((deferred_count / total_projects * 100)|round|int) if total_projects > 0 else 0 }}%</span>
                                             </div>
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <div><i class="bi bi-circle-fill text-danger me-2"></i> Delayed</div>
+                                            <div><i class="bi bi-circle-fill text-secondary me-2"></i> Pending</div>
                                             <div>
-                                                <span class="badge bg-secondary">1</span>
-                                                <span class="ms-2">14%</span>
+                                                <span class="badge bg-secondary">{{ pending_count }}</span>
+                                                <span class="ms-2">{{ ((pending_count / total_projects * 100)|round|int) if total_projects > 0 else 0 }}%</span>
                                             </div>
                                         </div>
                                     </div>
@@ -388,48 +422,33 @@
                         </div>
                         <div class="col-md-6">
                             <div class="card mb-4">
-                                <div class="card-header d-flex justify-content-between">
-                                    <h5 class="mb-0">Project Issues</h5>
-                                    <button class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-plus"></i> Add Issue
-                                    </button>
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Overdue Tasks</h5>
                                 </div>
                                 <div class="card-body">
+                                    {% set overdue_works = all_assigned_works|selectattr('status', 'eq', 'Overdue')|list %}
+                                    {% if overdue_works %}
                                     <div class="list-group">
+                                        {% for work in overdue_works[:5] %}
+                                        {% set w_group = groups|selectattr('id', 'eq', work.group_id)|first %}
                                         <div class="list-group-item">
                                             <div class="d-flex justify-content-between align-items-center">
-                                                <h6 class="mb-1">API Integration Problem</h6>
-                                                <span class="badge bg-danger">Critical</span>
+                                                <h6 class="mb-1">{{ work.title }}</h6>
+                                                <span class="badge bg-danger">{{ work.priority }}</span>
                                             </div>
-                                            <p class="mb-1 small">Group G17 is struggling with integrating the inventory
-                                                API with their frontend application.</p>
-                                            <small class="text-muted">Group: G17 - Cloud-based Inventory System</small>
+                                            <p class="mb-1 small text-danger">
+                                                <i class="bi bi-clock me-1"></i>Due: {{ work.due_date.strftime('%b %d, %Y') if work.due_date else 'N/A' }}
+                                            </p>
+                                            <small class="text-muted">Group: {{ w_group.group_id if w_group else 'Unknown' }} - {{ w_group.project_title if w_group else '' }}</small>
                                         </div>
-                                        <div class="list-group-item">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <h6 class="mb-1">Hardware Component Delay</h6>
-                                                <span class="badge bg-warning">High</span>
-                                            </div>
-                                            <p class="mb-1 small">G24 is facing delays in receiving their specialized
-                                                blockchain hardware components.</p>
-                                            <small class="text-muted">Group: G24 - Blockchain for Supply Chain
-                                                Tracking</small>
-                                        </div>
-                                        <div class="list-group-item">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <h6 class="mb-1">Data Collection Challenges</h6>
-                                                <span class="badge bg-warning">High</span>
-                                            </div>
-                                            <p class="mb-1 small">G27 is having trouble collecting enough social media
-                                                data for their sentiment analysis model.</p>
-                                            <small class="text-muted">Group: G27 - Social Media Sentiment
-                                                Analysis</small>
-                                        </div>
+                                        {% endfor %}
                                     </div>
-                                </div>
-                                <div class="card-footer bg-transparent text-end">
-                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-secondary"
-                                        onclick="alert('No issues reported.');">View All Issues</a>
+                                    {% else %}
+                                    <div class="text-center py-4 text-muted">
+                                        <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                                        <p class="mt-2 mb-0">No overdue tasks. All on track!</p>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -465,6 +484,9 @@
                                             <tbody>
                                                 {% if assigned_groups %}
                                                 {% for group in assigned_groups %}
+                                                {% set pd = all_project_details.get(group.id) %}
+                                                {% set prog = pd.progress if pd and pd.progress else 0 %}
+                                                {% set ps = all_project_statuses.get(group.id) %}
                                                 <tr>
                                                     <td><strong>{{ group.group_id }}</strong></td>
                                                     <td>{{ group.project_title }}</td>
@@ -474,12 +496,25 @@
                                                     </td>
                                                     <td>
                                                         <div class="progress" style="height: 20px;">
-                                                            <div class="progress-bar bg-success" role="progressbar"
-                                                                style="width: 65%"></div>
+                                                            <div class="progress-bar {% if prog >= 75 %}bg-success{% elif prog >= 50 %}bg-info{% elif prog >= 25 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar"
+                                                                style="width: {{ prog }}%"></div>
                                                         </div>
                                                     </td>
-                                                    <td><span class="badge bg-success">On Track</span></td>
-                                                    <td>Oct 15 - Progress Report</td>
+                                                    <td>
+                                                        {% if ps %}
+                                                        <span class="badge {% if ps.status == 'Accepted' %}bg-success{% elif ps.status == 'Conditionally Accepted' %}bg-warning text-dark{% elif ps.status == 'Deferred' %}bg-danger{% else %}bg-secondary{% endif %}">{{ ps.status }}</span>
+                                                        {% else %}
+                                                        <span class="badge bg-secondary">Pending</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% set group_remarks_list = remarks|selectattr('group_id', 'eq', group.group_id)|list %}
+                                                        {% if group_remarks_list %}
+                                                        {{ group_remarks_list[0].timestamp.strftime('%b %d') }} - {{ group_remarks_list[0].content[:30] }}{{ '...' if group_remarks_list[0].content|length > 30 }}
+                                                        {% else %}
+                                                        <span class="text-muted">No remarks</span>
+                                                        {% endif %}
+                                                    </td>
                                                     <td>
                                                         <button class="btn btn-sm btn-outline-primary view-project-btn"
                                                             data-group-id="{{ group.id }}"
@@ -526,49 +561,30 @@
                                                 <tr>
                                                     <th>Group ID</th>
                                                     <th>Project Title</th>
-                                                    <th>Evaluation Date</th>
                                                     <th>Status</th>
                                                     <th>Feedback</th>
-                                                    <th>Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
+                                                {% set evaluated = [] %}
+                                                {% for gid, ps in all_project_statuses.items() if ps.status != 'Pending' %}
+                                                    {% set eg = groups|selectattr('id', 'eq', gid)|first %}
+                                                    {% if eg %}
                                                 <tr>
-                                                    <td><strong>G23</strong></td>
-                                                    <td>Smart Healthcare Monitoring System</td>
-                                                    <td>Oct 10, 2024</td>
-                                                    <td><span class="badge bg-success">Completed</span></td>
-                                                    <td>Excellent progress on API integration</td>
+                                                    <td><strong>{{ eg.group_id }}</strong></td>
+                                                    <td>{{ eg.project_title or 'Untitled' }}</td>
                                                     <td>
-                                                        <button class="btn btn-sm btn-outline-info">
-                                                            <i class="bi bi-eye"></i> View
-                                                        </button>
+                                                        <span class="badge {% if ps.status == 'Accepted' %}bg-success{% elif ps.status == 'Conditionally Accepted' %}bg-warning text-dark{% elif ps.status == 'Deferred' %}bg-danger{% else %}bg-secondary{% endif %}">{{ ps.status }}</span>
                                                     </td>
+                                                    <td>{{ ps.comments[:50] if ps.comments else 'No feedback' }}{{ '...' if ps.comments and ps.comments|length > 50 }}</td>
                                                 </tr>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% if all_project_statuses.values()|selectattr('status', 'ne', 'Pending')|list|length == 0 %}
                                                 <tr>
-                                                    <td><strong>G17</strong></td>
-                                                    <td>Cloud-based Inventory System</td>
-                                                    <td>Sep 28, 2024</td>
-                                                    <td><span class="badge bg-success">Completed</span></td>
-                                                    <td>Good database design, need more testing</td>
-                                                    <td>
-                                                        <button class="btn btn-sm btn-outline-info">
-                                                            <i class="bi bi-eye"></i> View
-                                                        </button>
-                                                    </td>
+                                                    <td colspan="4" class="text-center text-muted py-4">No evaluations completed yet.</td>
                                                 </tr>
-                                                <tr>
-                                                    <td><strong>G19</strong></td>
-                                                    <td>Machine Learning Financial Analysis</td>
-                                                    <td>Sep 15, 2024</td>
-                                                    <td><span class="badge bg-success">Completed</span></td>
-                                                    <td>Strong ML model, documentation needed</td>
-                                                    <td>
-                                                        <button class="btn btn-sm btn-outline-info">
-                                                            <i class="bi bi-eye"></i> View
-                                                        </button>
-                                                    </td>
-                                                </tr>
+                                                {% endif %}
                                             </tbody>
                                         </table>
                                     </div>
@@ -651,20 +667,8 @@
                                 </table>
                             </div>
                         </div>
-                        <div class="card-footer bg-transparent">
-                            <nav aria-label="Student pagination">
-                                <ul class="pagination justify-content-center mb-0">
-                                    <li class="page-item disabled">
-                                        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
-                                    </li>
-                                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="#">Next</a>
-                                    </li>
-                                </ul>
-                            </nav>
+                        <div class="card-footer bg-transparent text-center">
+                            <small class="text-muted">{{ students|length }} student(s) total</small>
                         </div>
                     </div>
 
@@ -737,8 +741,8 @@
                             <div class="card dashboard-card text-center">
                                 <div class="card-body">
                                     <i class="bi bi-flag text-info" style="font-size: 2rem;"></i>
-                                    <h3 class="mt-2">{{ all_milestones|length }}</h3>
-                                    <p class="text-muted mb-0">Total Milestones</p>
+                                    <h3 class="mt-2">{{ all_assigned_works|length }}</h3>
+                                    <p class="text-muted mb-0">Assigned Tasks</p>
                                 </div>
                             </div>
                         </div>
@@ -754,9 +758,9 @@
                             {% for group in groups %}
                             {% set pd = all_project_details.get(group.id) %}
                             {% set ps = all_project_statuses.get(group.id) %}
-                            {% set group_milestones = all_milestones|selectattr('group_id', 'eq', group.id)|list %}
-                            {% set completed_ms = group_milestones|selectattr('status', 'eq', 'Completed')|list|length %}
-                            {% set progress = pd.progress if pd and pd.progress else (((completed_ms / group_milestones|length) * 100)|int if group_milestones|length > 0 else 0) %}
+                            {% set group_works = all_assigned_works|selectattr('group_id', 'eq', group.id)|list %}
+                            {% set completed_works = group_works|selectattr('status', 'eq', 'Completed')|list|length %}
+                            {% set progress = pd.progress if pd and pd.progress else (((completed_works / group_works|length) * 100)|int if group_works|length > 0 else 0) %}
                             <div class="mb-4 p-3 border rounded">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <div>
@@ -780,7 +784,7 @@
                                          role="progressbar" style="width: {{ progress }}%"></div>
                                 </div>
                                 <div class="d-flex justify-content-between mt-2">
-                                    <small class="text-muted">{{ completed_ms }}/{{ group_milestones|length }} milestones completed</small>
+                                    <small class="text-muted">{{ completed_works }}/{{ group_works|length }} tasks completed</small>
                                     <small class="text-muted">
                                         {% set group_vivas = all_vivas|selectattr('group_id', 'eq', group.id)|list %}
                                         {% if group_vivas %}
@@ -800,37 +804,50 @@
                         </div>
                     </div>
 
-                    <!-- Milestones Table -->
+                    <!-- Assigned Tasks Table -->
                     <div class="card mb-4">
                         <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>All Milestones</h5>
+                            <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>All Assigned Tasks</h5>
                         </div>
                         <div class="card-body p-0">
-                            {% if all_milestones %}
+                            {% if all_assigned_works %}
                             <div class="table-responsive">
                                 <table class="table table-hover m-0">
                                     <thead class="table-light">
                                         <tr>
                                             <th>Group</th>
-                                            <th>Milestone</th>
+                                            <th>Task</th>
+                                            <th>Type</th>
                                             <th>Due Date</th>
+                                            <th>Priority</th>
                                             <th>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for milestone in all_milestones %}
-                                        {% set ms_group = groups|selectattr('id', 'eq', milestone.group_id)|first %}
+                                        {% for work in all_assigned_works %}
+                                        {% set w_group = groups|selectattr('id', 'eq', work.group_id)|first %}
                                         <tr>
-                                            <td>{{ ms_group.group_id if ms_group else 'Unknown' }}</td>
-                                            <td>{{ milestone.title }}</td>
-                                            <td>{{ milestone.due_date.strftime('%b %d, %Y') if milestone.due_date else 'N/A' }}</td>
+                                            <td>{{ w_group.group_id if w_group else 'Unknown' }}</td>
+                                            <td>{{ work.title }}</td>
+                                            <td><span class="badge bg-light text-dark">{{ work.work_type }}</span></td>
+                                            <td>{{ work.due_date.strftime('%b %d, %Y') if work.due_date else 'N/A' }}</td>
                                             <td>
                                                 <span class="badge 
-                                                    {% if milestone.status == 'Completed' %}bg-success
-                                                    {% elif milestone.status == 'In Progress' %}bg-primary
-                                                    {% elif milestone.status == 'Overdue' %}bg-danger
+                                                    {% if work.priority == 'Urgent' %}bg-danger
+                                                    {% elif work.priority == 'High' %}bg-warning text-dark
+                                                    {% elif work.priority == 'Medium' %}bg-primary
                                                     {% else %}bg-secondary{% endif %}">
-                                                    {{ milestone.status }}
+                                                    {{ work.priority }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if work.status == 'Completed' %}bg-success
+                                                    {% elif work.status == 'In Progress' %}bg-primary
+                                                    {% elif work.status == 'Submitted' %}bg-info
+                                                    {% elif work.status == 'Overdue' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ work.status }}
                                                 </span>
                                             </td>
                                         </tr>
@@ -841,7 +858,7 @@
                             {% else %}
                             <div class="p-4">
                                 <div class="alert alert-info mb-0">
-                                    <i class="bi bi-info-circle me-2"></i>No milestones have been set yet.
+                                    <i class="bi bi-info-circle me-2"></i>No tasks have been assigned yet.
                                 </div>
                             </div>
                             {% endif %}
@@ -1013,37 +1030,50 @@
                         </div>
                     </div>
 
-                    <!-- Upcoming Milestones/Deadlines -->
+                    <!-- Upcoming Tasks/Deadlines -->
                     <div class="card">
                         <div class="card-header bg-white">
-                            <h5 class="mb-0"><i class="bi bi-flag me-2"></i>Upcoming Milestones & Deadlines</h5>
+                            <h5 class="mb-0"><i class="bi bi-flag me-2"></i>Upcoming Tasks & Deadlines</h5>
                         </div>
                         <div class="card-body p-0">
-                            {% set upcoming = all_milestones|rejectattr('status', 'eq', 'Completed')|list %}
+                            {% set upcoming = all_assigned_works|rejectattr('status', 'eq', 'Completed')|list %}
                             {% if upcoming %}
                             <div class="table-responsive">
                                 <table class="table table-hover m-0">
                                     <thead class="table-light">
                                         <tr>
                                             <th>Group</th>
-                                            <th>Milestone</th>
+                                            <th>Task</th>
+                                            <th>Type</th>
                                             <th>Due Date</th>
+                                            <th>Priority</th>
                                             <th>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {% for milestone in upcoming[:10] %}
-                                        {% set ms_group = groups|selectattr('id', 'eq', milestone.group_id)|first %}
+                                        {% for work in upcoming[:10] %}
+                                        {% set w_group = groups|selectattr('id', 'eq', work.group_id)|first %}
                                         <tr>
-                                            <td>{{ ms_group.group_id if ms_group else 'Unknown' }}</td>
-                                            <td>{{ milestone.title }}</td>
-                                            <td>{{ milestone.due_date.strftime('%b %d, %Y') if milestone.due_date else 'N/A' }}</td>
+                                            <td>{{ w_group.group_id if w_group else 'Unknown' }}</td>
+                                            <td>{{ work.title }}</td>
+                                            <td><span class="badge bg-light text-dark">{{ work.work_type }}</span></td>
+                                            <td>{{ work.due_date.strftime('%b %d, %Y') if work.due_date else 'N/A' }}</td>
                                             <td>
                                                 <span class="badge 
-                                                    {% if milestone.status == 'In Progress' %}bg-primary
-                                                    {% elif milestone.status == 'Overdue' %}bg-danger
+                                                    {% if work.priority == 'Urgent' %}bg-danger
+                                                    {% elif work.priority == 'High' %}bg-warning text-dark
+                                                    {% elif work.priority == 'Medium' %}bg-primary
                                                     {% else %}bg-secondary{% endif %}">
-                                                    {{ milestone.status }}
+                                                    {{ work.priority }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge 
+                                                    {% if work.status == 'In Progress' %}bg-primary
+                                                    {% elif work.status == 'Submitted' %}bg-info
+                                                    {% elif work.status == 'Overdue' %}bg-danger
+                                                    {% else %}bg-secondary{% endif %}">
+                                                    {{ work.status }}
                                                 </span>
                                             </td>
                                         </tr>
@@ -1054,10 +1084,161 @@
                             {% else %}
                             <div class="p-4">
                                 <div class="alert alert-info mb-0">
-                                    <i class="bi bi-info-circle me-2"></i>No upcoming milestones.
+                                    <i class="bi bi-info-circle me-2"></i>No upcoming tasks.
                                 </div>
                             </div>
                             {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submissions Section -->
+                <div id="submissions" class="content-section">
+                    <h2 class="mb-4">Student Submissions</h2>
+
+                    <!-- Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-cloud-arrow-up text-primary" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ all_submissions|length }}</h3>
+                                    <p class="text-muted mb-0">Total Submissions</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-hourglass-split text-warning" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ all_submissions|selectattr('status', 'eq', 'Submitted')|list|length }}</h3>
+                                    <p class="text-muted mb-0">Pending Review</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ all_submissions|selectattr('status', 'eq', 'Approved')|list|length }}</h3>
+                                    <p class="text-muted mb-0">Approved</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card dashboard-card text-center">
+                                <div class="card-body">
+                                    <i class="bi bi-x-circle text-danger" style="font-size: 2rem;"></i>
+                                    <h3 class="mt-2">{{ all_submissions|selectattr('status', 'eq', 'Rejected')|list|length }}</h3>
+                                    <p class="text-muted mb-0">Rejected</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submissions Table -->
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-folder2-open me-2"></i>All Submissions</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if all_submissions %}
+                            <div class="table-responsive">
+                                <table class="table table-hover m-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Student</th>
+                                            <th>Group</th>
+                                            <th>Title</th>
+                                            <th>Type</th>
+                                            <th>File</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sub in all_submissions %}
+                                        <tr>
+                                            <td>{{ sub.student.first_name }} {{ sub.student.last_name }}</td>
+                                            <td>{{ sub.group.group_id if sub.group else 'N/A' }}</td>
+                                            <td>
+                                                <strong>{{ sub.title }}</strong>
+                                                {% if sub.description %}
+                                                <br><small class="text-muted">{{ sub.description[:50] }}{{ '...' if sub.description|length > 50 else '' }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td><span class="badge bg-info">{{ sub.submission_type }}</span></td>
+                                            <td>
+                                                <i class="bi {% if sub.file_type == 'pdf' %}bi-file-earmark-pdf text-danger{% elif sub.file_type in ['doc', 'docx'] %}bi-file-earmark-word text-primary{% elif sub.file_type in ['ppt', 'pptx'] %}bi-file-earmark-ppt text-warning{% elif sub.file_type in ['zip', 'rar'] %}bi-file-earmark-zip text-secondary{% else %}bi-file-earmark text-muted{% endif %} me-1"></i>
+                                                {{ sub.original_filename }}<br>
+                                                <small class="text-muted">{{ sub.file_size_display }}</small>
+                                            </td>
+                                            <td>{{ sub.created_at.strftime('%b %d, %Y') }}</td>
+                                            <td>
+                                                <span class="badge {% if sub.status == 'Approved' %}bg-success{% elif sub.status == 'Reviewed' %}bg-info{% elif sub.status == 'Rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                                    {{ sub.status }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('download_submission', submission_id=sub.id) }}" class="btn btn-sm btn-outline-primary me-1" title="Download">
+                                                    <i class="bi bi-download"></i>
+                                                </a>
+                                                <button class="btn btn-sm btn-outline-success review-submission-btn"
+                                                    data-bs-toggle="modal" data-bs-target="#reviewSubmissionModal"
+                                                    data-id="{{ sub.id }}" data-title="{{ sub.title }}" data-student="{{ sub.student.first_name }} {{ sub.student.last_name }}"
+                                                    data-status="{{ sub.status }}" data-feedback="{{ sub.feedback or '' }}"
+                                                    title="Review">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-cloud-arrow-up" style="font-size: 3rem;"></i>
+                                <p class="mt-3">No submissions received yet.</p>
+                                <p class="small">Student submissions will appear here once they upload their work.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review Submission Modal -->
+                <div class="modal fade" id="reviewSubmissionModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" id="reviewSubmissionForm">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Review Submission</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>Title:</strong> <span id="reviewSubTitle"></span></p>
+                                    <p><strong>Student:</strong> <span id="reviewSubStudent"></span></p>
+                                    <div class="mb-3">
+                                        <label for="reviewStatus" class="form-label">Status</label>
+                                        <select class="form-select" name="status" id="reviewStatus">
+                                            <option value="Reviewed">Reviewed</option>
+                                            <option value="Approved">Approved</option>
+                                            <option value="Rejected">Rejected</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="reviewFeedback" class="form-label">Feedback (Optional)</label>
+                                        <textarea class="form-control" name="feedback" id="reviewFeedback" rows="3" placeholder="Provide feedback for the student..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Save Review</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -1090,8 +1271,8 @@
                             <div class="card dashboard-card text-center">
                                 <div class="card-body">
                                     <i class="bi bi-flag text-warning" style="font-size: 2rem;"></i>
-                                    <h3 class="mt-2">{{ all_milestones|length }}</h3>
-                                    <p class="text-muted mb-0">Total Milestones</p>
+                                    <h3 class="mt-2">{{ all_assigned_works|length }}</h3>
+                                    <p class="text-muted mb-0">Assigned Tasks</p>
                                 </div>
                             </div>
                         </div>
@@ -1120,7 +1301,7 @@
                                             <th>Group</th>
                                             <th>Project Title</th>
                                             <th>Progress</th>
-                                            <th>Milestones</th>
+                                            <th>Tasks</th>
                                             <th>Evaluation Status</th>
                                         </tr>
                                     </thead>
@@ -1128,9 +1309,9 @@
                                         {% for group in groups %}
                                         {% set pd = all_project_details.get(group.id) %}
                                         {% set ps = all_project_statuses.get(group.id) %}
-                                        {% set group_milestones = all_milestones|selectattr('group_id', 'eq', group.id)|list %}
-                                        {% set completed_ms = group_milestones|selectattr('status', 'eq', 'Completed')|list|length %}
-                                        {% set progress = pd.progress if pd and pd.progress else (((completed_ms / group_milestones|length) * 100)|int if group_milestones|length > 0 else 0) %}
+                                        {% set group_works = all_assigned_works|selectattr('group_id', 'eq', group.id)|list %}
+                                        {% set completed_works = group_works|selectattr('status', 'eq', 'Completed')|list|length %}
+                                        {% set progress = pd.progress if pd and pd.progress else (((completed_works / group_works|length) * 100)|int if group_works|length > 0 else 0) %}
                                         <tr>
                                             <td><strong>{{ group.group_id }}</strong></td>
                                             <td>{{ group.project_title or 'Untitled' }}</td>
@@ -1143,7 +1324,7 @@
                                                     <small>{{ progress }}%</small>
                                                 </div>
                                             </td>
-                                            <td>{{ completed_ms }}/{{ group_milestones|length }}</td>
+                                            <td>{{ completed_works }}/{{ group_works|length }}</td>
                                             <td>
                                                 {% if ps %}
                                                 <span class="badge 
@@ -1310,6 +1491,22 @@
                                 const modal = new bootstrap.Modal(modalElement);
                                 modal.show();
                             }
+                        });
+
+                        // Review Submission Modal population
+                        document.querySelectorAll('.review-submission-btn').forEach(function(btn) {
+                            btn.addEventListener('click', function() {
+                                const id = this.getAttribute('data-id');
+                                const title = this.getAttribute('data-title');
+                                const student = this.getAttribute('data-student');
+                                const status = this.getAttribute('data-status');
+                                const feedback = this.getAttribute('data-feedback');
+                                document.getElementById('reviewSubTitle').textContent = title;
+                                document.getElementById('reviewSubStudent').textContent = student;
+                                document.getElementById('reviewStatus').value = (status === 'Submitted') ? 'Reviewed' : status;
+                                document.getElementById('reviewFeedback').value = feedback || '';
+                                document.getElementById('reviewSubmissionForm').action = '/submission/review/' + id;
+                            });
                         });
 
                         // Manual modal close handler removed as Bootstrap handles it automatically
