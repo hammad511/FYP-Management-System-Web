@@ -8,7 +8,11 @@ import os
 from functools import wraps
 import secrets
 import datetime
-from flask_mail import Mail, Message
+try:
+    from flask_mail import Mail, Message
+except ImportError:
+    Mail = None
+    Message = None
 try:
     from authlib.integrations.flask_client import OAuth
 except ImportError:
@@ -71,6 +75,9 @@ if _database_url:
     # Fix Heroku/Supabase URI scheme: postgres:// → postgresql://
     if _database_url.startswith('postgres://'):
         _database_url = _database_url.replace('postgres://', 'postgresql://', 1)
+    # Use pg8000 pure-Python driver (works on Vercel Lambda without libpq)
+    if _database_url.startswith('postgresql://') and '+' not in _database_url.split('://')[0]:
+        _database_url = _database_url.replace('postgresql://', 'postgresql+pg8000://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = _database_url
 elif os.environ.get('RENDER'):
     db_path = os.path.join(RENDER_DATA_DIR, 'fyp.db')
@@ -89,6 +96,12 @@ else:
     _engine_opts['pool_size'] = 5
     _engine_opts['max_overflow'] = 10
     _engine_opts['pool_recycle'] = 300
+    # pg8000 requires ssl_context for cloud-hosted PostgreSQL (Supabase)
+    import ssl as _ssl
+    _ssl_ctx = _ssl.create_default_context()
+    _ssl_ctx.check_hostname = False
+    _ssl_ctx.verify_mode = _ssl.CERT_NONE
+    _engine_opts['connect_args'] = {'ssl_context': _ssl_ctx}
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = _engine_opts
 
 # Security configuration for session cookies
@@ -132,7 +145,10 @@ OAUTH_CONFIGURED = (app.config['GOOGLE_CLIENT_ID'] != 'not-configured' and
 
 # Initialize extensions
 db = SQLAlchemy(app)
-mail = Mail(app)
+if Mail:
+    mail = Mail(app)
+else:
+    mail = None
 if OAuth:
     oauth = OAuth(app)
 else:
