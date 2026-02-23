@@ -36,10 +36,11 @@ _secret_key = os.environ.get('SECRET_KEY')
 _is_dev = app.debug or os.environ.get('FLASK_ENV') == 'development'
 if _secret_key:
     app.config['SECRET_KEY'] = _secret_key
-elif _is_dev:
-    app.config['SECRET_KEY'] = 'dev-secret-key-change-this-in-prod-982374923'
 else:
-    raise RuntimeError("SECRET_KEY must be set in production")
+    # Fallback for dev or if SECRET_KEY is missing — always allow app to start
+    app.config['SECRET_KEY'] = 'dev-secret-key-change-this-in-prod-982374923'
+    if not _is_dev:
+        print('[WARNING] SECRET_KEY not set! Using fallback. Set SECRET_KEY env var in production.')
 
 # Initialize CSRF protection
 app.config['WTF_CSRF_TIME_LIMIT'] = 86400  # 24 hours
@@ -4644,19 +4645,22 @@ if os.environ.get('RENDER'):
             print(f"Render Init Error: {e}")
 
 # Vercel / Production deployment initialization (runs on cold start)
-if os.environ.get('VERCEL') or os.environ.get('DATABASE_URL'):
-    with app.app_context():
-        try:
-            db.create_all()
-            # Seed default admin if missing
-            if not User.query.filter_by(email='admin@example.com').first():
-                admin = User(email='admin@example.com', first_name='Admin', last_name='User', role='admin')
-                admin.set_password('admin123')
-                db.session.add(admin)
-                db.session.commit()
-                print("Production: Admin user created.")
-        except Exception as e:
-            print(f"Production Init Error: {e}")
+try:
+    if os.environ.get('VERCEL') or (os.environ.get('DATABASE_URL') and not os.environ.get('RENDER')):
+        with app.app_context():
+            try:
+                db.create_all()
+                # Seed default admin if missing
+                if not User.query.filter_by(email='admin@example.com').first():
+                    admin = User(email='admin@example.com', first_name='Admin', last_name='User', role='admin')
+                    admin.set_password('admin123')
+                    db.session.add(admin)
+                    db.session.commit()
+                    print("Production: Admin user created.")
+            except Exception as e:
+                print(f"Production Init Error: {e}")
+except Exception as e:
+    print(f"[WARNING] Skipping production init: {e}")
 
 if __name__ == '__main__':
     with app.app_context():

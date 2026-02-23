@@ -11,16 +11,8 @@
   ],
   "routes": [
     {
-      "src": "/static/(.*)",
-      "dest": "backend/app.py"
-    },
-    {
       "src": "/(.*)",
       "dest": "backend/app.py"
     }
-  ],
-  "env": {
-    "FLASK_ENV": "production",
-    "VERCEL": "1"
-  }
+  ]
 }
