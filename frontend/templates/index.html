@@ -10,239 +10,636 @@
     <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5a67d8;
+            --accent: #764ba2;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-warm: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-cool: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --gradient-sun: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            --bg-dark: #0f0f1a;
+            --bg-card: rgba(255,255,255,0.06);
+            --text-main: #ffffff;
+            --text-dim: #a0aec0;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            background-color: #313131;
-            background-image: radial-gradient(rgba(255, 255, 255, 0.171) 2px, transparent 0);
-            background-size: 30px 30px;
-            background-position: -5px -5px;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
         }
-        .hero-section {
-            background-color: #0d6efd;
-            color: white;
-            padding: 100px 0;
-            margin-bottom: 50px;
+
+        /* ── Animated Background ── */
+        .bg-animation {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
         }
-        .feature-card {
-            border: none;
+        .bg-animation .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.25;
+            animation: floatOrb 18s ease-in-out infinite alternate;
+        }
+        .bg-animation .orb:nth-child(1) {
+            width: 500px; height: 500px;
+            background: var(--primary);
+            top: -10%; left: -5%;
+            animation-duration: 20s;
+        }
+        .bg-animation .orb:nth-child(2) {
+            width: 400px; height: 400px;
+            background: var(--accent);
+            bottom: -10%; right: -5%;
+            animation-duration: 24s;
+            animation-delay: -5s;
+        }
+        .bg-animation .orb:nth-child(3) {
+            width: 300px; height: 300px;
+            background: #4facfe;
+            top: 50%; left: 50%;
+            animation-duration: 22s;
+            animation-delay: -10s;
+        }
+        @keyframes floatOrb {
+            0%   { transform: translate(0, 0) scale(1); }
+            50%  { transform: translate(60px, -40px) scale(1.15); }
+            100% { transform: translate(-30px, 50px) scale(0.95); }
+        }
+
+        /* ── Navbar ── */
+        .navbar-custom {
+            background: rgba(15, 15, 26, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding: 0.8rem 0;
+            z-index: 100;
+            position: sticky;
+            top: 0;
+        }
+        .navbar-custom .navbar-brand {
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .navbar-custom .navbar-brand .brand-icon {
+            width: 38px; height: 38px;
+            background: var(--gradient);
             border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+        }
+        .nav-buttons { display: flex; gap: 0.75rem; }
+        .btn-nav {
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        .btn-nav-outline {
+            border: 2px solid rgba(255,255,255,0.25);
+            color: #fff;
+            background: transparent;
+        }
+        .btn-nav-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(102,126,234,0.1);
+        }
+        .btn-nav-fill {
+            background: var(--gradient);
+            color: #fff;
+            border: none;
+        }
+        .btn-nav-fill:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102,126,234,0.4);
+            color: #fff;
+        }
+
+        /* ── Hero ── */
+        .hero {
+            position: relative;
+            z-index: 1;
+            padding: 6rem 0 5rem;
+            min-height: 85vh;
+            display: flex;
+            align-items: center;
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(102,126,234,0.15);
+            border: 1px solid rgba(102,126,234,0.3);
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #a9b8f0;
+            margin-bottom: 1.5rem;
+        }
+        .hero-badge i { color: var(--primary); }
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
+        }
+        .hero h1 .gradient-text {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-desc {
+            font-size: 1.15rem;
+            color: var(--text-dim);
+            line-height: 1.7;
+            max-width: 520px;
+            margin-bottom: 2.5rem;
+        }
+        .hero-buttons { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .btn-hero {
+            padding: 0.85rem 2rem;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 1rem;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        .btn-hero-primary {
+            background: var(--gradient);
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 20px rgba(102,126,234,0.35);
+        }
+        .btn-hero-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 35px rgba(102,126,234,0.5);
+            color: #fff;
+        }
+        .btn-hero-outline {
+            background: transparent;
+            color: #fff;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        .btn-hero-outline:hover {
+            border-color: var(--primary);
+            background: rgba(102,126,234,0.1);
+            color: #fff;
+            transform: translateY(-3px);
+        }
+
+        /* Hero image card */
+        .hero-visual {
+            position: relative;
+        }
+        .hero-visual img {
+            border-radius: 24px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.08);
+            width: 100%;
+        }
+        .hero-visual::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 26px;
+            background: var(--gradient);
+            opacity: 0.3;
+            z-index: -1;
+            filter: blur(20px);
+        }
+
+        /* Stats strip */
+        .stats-strip {
+            display: flex;
+            gap: 2.5rem;
+            margin-top: 3rem;
+        }
+        .stat-item {
+            text-align: left;
+        }
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label {
+            font-size: 0.82rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 500;
+        }
+
+        /* ── Features ── */
+        .features-section {
+            position: relative;
+            z-index: 1;
+            padding: 5rem 0;
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+        .section-header p {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 20px;
+            padding: 2rem;
             height: 100%;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(102,126,234,0.12), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
         }
         .feature-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-8px);
+            border-color: rgba(102,126,234,0.3);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
         }
-        .feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
+        .feature-card:hover::before { opacity: 1; }
+
+        .feature-card .icon-box {
+            width: 60px; height: 60px;
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
         }
-        /* Text enhancement styles */
-        h1, h2, h3, h4, h5, h6 {
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        .feature-card:nth-child(1) .icon-box { background: var(--gradient); }
+        .feature-card:nth-child(2) .icon-box { background: var(--gradient-warm); }
+        .feature-card:nth-child(3) .icon-box { background: var(--gradient-cool); }
+        .feature-card:nth-child(4) .icon-box { background: var(--gradient-sun); }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            position: relative; z-index: 1;
         }
-        .display-4, .display-5 {
-            -webkit-text-stroke: 0.5px white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        .feature-card p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.65;
+            margin: 0;
+            position: relative; z-index: 1;
         }
-        .lead {
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
+
+        /* ── How It Works ── */
+        .how-section {
+            position: relative; z-index: 1;
+            padding: 5rem 0;
         }
-        .navbar-brand {
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-            font-weight: bold;
+        .step-card {
+            text-align: center;
+            padding: 2rem 1.5rem;
         }
-        .card {
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .step-number {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: var(--gradient);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin: 0 auto 1.25rem;
+            box-shadow: 0 8px 25px rgba(102,126,234,0.3);
         }
-        .text-muted {
-            color: #d1d1d1 !important;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        .step-card h4 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
         }
-        .feature-icon {
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        .step-card p {
+            color: var(--text-dim);
+            font-size: 0.92rem;
         }
-        .bg-light {
-            background-color: #2a2a2a !important;
+
+        /* ── CTA ── */
+        .cta-section {
+            position: relative; z-index: 1;
+            padding: 5rem 0;
         }
-        footer {
-            background-color: #212529;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-            border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        .cta-box {
+            background: var(--gradient);
+            border-radius: 28px;
+            padding: 4rem 3rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
         }
-        .btn {
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        .cta-box::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -30%;
+            width: 500px; height: 500px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
         }
-        /* Button styles */
-        .btn-primary {
-            background-color: white;
-            color: black;
-            border: 2px solid black;
-            text-shadow: none;
+        .cta-box h2 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            position: relative; z-index: 1;
+        }
+        .cta-box p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+            position: relative; z-index: 1;
+        }
+        .btn-cta {
+            background: #fff;
+            color: var(--primary-dark);
+            font-weight: 700;
+            padding: 0.85rem 2.5rem;
+            border-radius: 14px;
+            font-size: 1rem;
+            text-decoration: none;
+            display: inline-flex; align-items: center; gap: 0.5rem;
             transition: all 0.3s ease;
-            font-weight: bold;
+            position: relative; z-index: 1;
         }
-        .btn-primary:hover {
-            background-color: black;
-            color: white;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        .btn-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+            color: var(--primary-dark);
         }
-        .btn-outline-primary {
-            background-color: transparent;
-            color: white;
-            border: 2px solid white;
-            text-shadow: none;
-            transition: all 0.3s ease;
+
+        /* ── Footer ── */
+        .footer-custom {
+            position: relative; z-index: 1;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding: 2.5rem 0;
         }
-        .btn-outline-primary:hover {
-            background-color: white;
-            color: black;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        .footer-custom p {
+            color: var(--text-dim);
+            font-size: 0.88rem;
+            margin: 0;
         }
-        .btn-light {
-            background-color: white;
-            color: black;
-            border: 2px solid transparent;
-            text-shadow: none;
+        .footer-links { display: flex; gap: 1.5rem; }
+        .footer-links a {
+            color: var(--text-dim);
+            font-size: 0.88rem;
+            text-decoration: none;
+            transition: color 0.2s;
         }
-        .btn-light:hover {
-            background-color: black;
-            color: white;
-            border: 2px solid white;
+        .footer-links a:hover { color: var(--primary); }
+
+        /* ── Responsive ── */
+        @media (max-width: 991px) {
+            .hero h1 { font-size: 2.5rem; }
+            .hero { padding: 3rem 0; min-height: auto; }
+            .hero-visual { margin-top: 3rem; }
+            .stats-strip { gap: 1.5rem; }
+            .stat-number { font-size: 1.4rem; }
         }
-        .btn-outline-light {
-            background-color: transparent;
-            color: white;
-            border: 2px solid white;
-            text-shadow: none;
+        @media (max-width: 575px) {
+            .hero h1 { font-size: 2rem; }
+            .hero-buttons { flex-direction: column; }
+            .stats-strip { flex-wrap: wrap; gap: 1rem; }
+            .cta-box { padding: 2.5rem 1.5rem; }
+            .cta-box h2 { font-size: 1.6rem; }
         }
-        .btn-outline-light:hover {
-            background-color: white;
-            color: black;
+
+        /* ── Fade-in animation ── */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
     </style>
 </head>
 <body>
-    <header class="sticky-top bg-white border-bottom">
-        <nav class="navbar navbar-expand-lg">
-            <div class="container">
-                <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
-                    <i class="bi bi-mortarboard-fill me-2"></i>
-                    <span>FYP Management System</span>
-                </a>
-                <div class="ms-auto">
-                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary me-2">Login</a>
-                    <a href="{{ url_for('signup') }}" class="btn btn-primary">Sign Up</a>
-                </div>
+
+    <!-- Animated background orbs -->
+    <div class="bg-animation">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <!-- ── Navbar ── -->
+    <nav class="navbar-custom">
+        <div class="container d-flex align-items-center justify-content-between">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <span class="brand-icon"><i class="bi bi-mortarboard-fill"></i></span>
+                FYP Management System
+            </a>
+            <div class="nav-buttons">
+                <a href="{{ url_for('login') }}" class="btn-nav btn-nav-outline">Login</a>
+                <a href="{{ url_for('signup') }}" class="btn-nav btn-nav-fill">Sign Up</a>
             </div>
-        </nav>
-    </header>
+        </div>
+    </nav>
 
     <main>
-        <section class="py-5 py-md-5 py-lg-5 py-xl-5">
+        <!-- ── Hero ── -->
+        <section class="hero">
             <div class="container">
                 <div class="row align-items-center">
                     <div class="col-lg-6">
-                        <div class="mb-4">
-                            <h1 class="display-4 fw-bold">Streamline Your Final Year Project Management</h1>
-                            <p class="lead text-muted">
-                                A comprehensive platform for students, teachers, supervisors, and administrators to manage the
-                                entire FYP process efficiently.
-                            </p>
+                        <div class="hero-badge">
+                            <i class="bi bi-lightning-fill"></i>
+                            Built for university FYP workflows
                         </div>
-                        <div class="d-flex flex-column flex-sm-row gap-2">
-                            <a href="{{ url_for('signup') }}" class="btn btn-primary btn-lg">Get Started</a>
-                            <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg">Login</a>
+                        <h1>
+                            Streamline Your<br>
+                            <span class="gradient-text">Final Year Project</span><br>
+                            Management
+                        </h1>
+                        <p class="hero-desc">
+                            A comprehensive platform for students, teachers, supervisors, and administrators to manage the entire FYP process — from proposal to viva.
+                        </p>
+                        <div class="hero-buttons">
+                            <a href="{{ url_for('signup') }}" class="btn-hero btn-hero-primary">
+                                <i class="bi bi-rocket-takeoff"></i> Get Started Free
+                            </a>
+                            <a href="{{ url_for('login') }}" class="btn-hero btn-hero-outline">
+                                <i class="bi bi-box-arrow-in-right"></i> Login
+                            </a>
+                        </div>
+                        <div class="stats-strip">
+                            <div class="stat-item">
+                                <div class="stat-number">4</div>
+                                <div class="stat-label">User Roles</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">AI</div>
+                                <div class="stat-label">Scheduling</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">24/7</div>
+                                <div class="stat-label">Access</div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-lg-6 text-center">
-                        <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=80" alt="FYP Management Dashboard Preview" class="img-fluid rounded shadow-lg">
+                    <div class="col-lg-6">
+                        <div class="hero-visual fade-up">
+                            <img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80" alt="FYP Management System Teamwork">
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section class="py-5 py-md-5 py-lg-5 bg-light">
+        <!-- ── Features ── -->
+        <section class="features-section">
             <div class="container">
-                <div class="text-center mb-5">
-                    <h2 class="display-5 fw-bold">Features for Every Role</h2>
-                    <p class="lead text-muted">
-                        Our platform provides tailored experiences for all stakeholders in the FYP process.
-                    </p>
+                <div class="section-header fade-up">
+                    <h2>Features for <span class="gradient-text">Every Role</span></h2>
+                    <p>Tailored experiences for all stakeholders in the FYP process.</p>
                 </div>
                 <div class="row g-4">
-                    <div class="col-md-6 col-lg-3">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-body text-center">
-                                <div class="feature-icon bg-primary text-white rounded-circle mb-3">
-                                    <i class="bi bi-mortarboard-fill"></i>
-                                </div>
-                                <h3 class="h4">Students</h3>
-                                <p class="text-muted">
-                                    View viva schedules, track project status, and receive real-time notifications.
-                                </p>
-                            </div>
+                    <div class="col-md-6 col-lg-3 fade-up">
+                        <div class="feature-card">
+                            <div class="icon-box"><i class="bi bi-mortarboard-fill"></i></div>
+                            <h3>Students</h3>
+                            <p>View viva schedules, track project status, and receive real-time notifications about your FYP progress.</p>
                         </div>
                     </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-body text-center">
-                                <div class="feature-icon bg-primary text-white rounded-circle mb-3">
-                                    <i class="bi bi-chat-dots"></i>
-                                </div>
-                                <h3 class="h4">Teachers</h3>
-                                <p class="text-muted">
-                                    Manage student groups, update project status, and schedule vivas with AI assistance.
-                                </p>
-                            </div>
+                    <div class="col-md-6 col-lg-3 fade-up">
+                        <div class="feature-card">
+                            <div class="icon-box"><i class="bi bi-easel2-fill"></i></div>
+                            <h3>Teachers</h3>
+                            <p>Manage student groups, update project statuses, and schedule vivas with smart AI assistance.</p>
                         </div>
                     </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-body text-center">
-                                <div class="feature-icon bg-primary text-white rounded-circle mb-3">
-                                    <i class="bi bi-person-badge"></i>
-                                </div>
-                                <h3 class="h4">Supervisors</h3>
-                                <p class="text-muted">
-                                    Monitor project progress, view detailed remarks, and communicate with students and teachers.
-                                </p>
-                            </div>
+                    <div class="col-md-6 col-lg-3 fade-up">
+                        <div class="feature-card">
+                            <div class="icon-box"><i class="bi bi-person-check-fill"></i></div>
+                            <h3>Supervisors</h3>
+                            <p>Monitor project progress, review detailed remarks, and communicate with students and teachers.</p>
                         </div>
                     </div>
-                    <div class="col-md-6 col-lg-3">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-body text-center">
-                                <div class="feature-icon bg-primary text-white rounded-circle mb-3">
-                                    <i class="bi bi-gear"></i>
-                                </div>
-                                <h3 class="h4">Administrators</h3>
-                                <p class="text-muted">
-                                    Manage users, control system settings, and oversee the entire FYP process.
-                                </p>
-                            </div>
+                    <div class="col-md-6 col-lg-3 fade-up">
+                        <div class="feature-card">
+                            <div class="icon-box"><i class="bi bi-shield-lock-fill"></i></div>
+                            <h3>Administrators</h3>
+                            <p>Manage users, control system settings, and oversee the complete FYP lifecycle effortlessly.</p>
                         </div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── How It Works ── -->
+        <section class="how-section">
+            <div class="container">
+                <div class="section-header fade-up">
+                    <h2>How It <span class="gradient-text">Works</span></h2>
+                    <p>Get up and running in three simple steps.</p>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 fade-up">
+                        <div class="step-card">
+                            <div class="step-number">1</div>
+                            <h4>Create Account</h4>
+                            <p>Sign up with your university email and select your role — student, teacher, supervisor, or admin.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 fade-up">
+                        <div class="step-card">
+                            <div class="step-number">2</div>
+                            <h4>Submit &amp; Collaborate</h4>
+                            <p>Propose projects, form groups, and work together with your supervisor throughout the FYP process.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 fade-up">
+                        <div class="step-card">
+                            <div class="step-number">3</div>
+                            <h4>Schedule &amp; Present</h4>
+                            <p>AI-powered scheduling helps organize viva sessions automatically — focus on your presentation.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── CTA ── -->
+        <section class="cta-section">
+            <div class="container">
+                <div class="cta-box fade-up">
+                    <h2>Ready to Simplify Your FYP Journey?</h2>
+                    <p>Join your classmates and faculty on the platform built for final year projects.</p>
+                    <a href="{{ url_for('signup') }}" class="btn-cta">
+                        <i class="bi bi-arrow-right-circle-fill"></i> Get Started Now
+                    </a>
                 </div>
             </div>
         </section>
     </main>
 
-    <footer class="border-top py-4">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-6 text-center text-md-start">
-                    <p class="mb-0 text-muted">© 2025 FYP Management System. All rights reserved.</p>
-                </div>
+    <!-- ── Footer ── -->
+    <footer class="footer-custom">
+        <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between">
+            <p>&copy; 2026 FYP Management System. All rights reserved.</p>
+            <div class="footer-links mt-2 mt-md-0">
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Contact</a>
             </div>
         </div>
     </footer>
 
-    <!-- Bootstrap JS Bundle with Popper -->
+    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Fade-up on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+        }, { threshold: 0.15 });
+        document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+    </script>
 </body>
 </html> 

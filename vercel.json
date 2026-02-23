@@ -1,15 +1,26 @@
 {
-    "version": 2,
-    "builds": [
-      {
-        "src": "backend/app.py",
-        "use": "@vercel/python"
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/app.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
       }
-    ],
-    "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "backend/app.py"
-      }
-    ]
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "backend/app.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "backend/app.py"
+    }
+  ],
+  "env": {
+    "FLASK_ENV": "production",
+    "VERCEL": "1"
   }
+}

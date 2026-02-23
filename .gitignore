@@ -29,4 +29,7 @@ Thumbs.db
 
 # Node (if any)
 node_modules/
-.env.*
+
+# Local DB files
+*.db
+backend/fyp.db

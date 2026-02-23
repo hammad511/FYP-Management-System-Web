@@ -183,7 +183,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ── Social login redirect ── */
     window.socialLogin = provider => {
-        window.location.href = `/login/${provider}`;
+        // Require role selection before social login
+        const roleSelect = document.getElementById('role');
+        if (roleSelect && !roleSelect.value) {
+            // Show error on the role field
+            const wrap = roleSelect.closest('.input-wrap');
+            const errEl = roleSelect.closest('.field')?.querySelector('.field-error');
+            if (wrap) { wrap.classList.add('is-invalid'); }
+            if (errEl) { errEl.textContent = 'Please select your role before continuing with ' + provider; errEl.classList.add('show'); }
+            roleSelect.focus();
+            return;
+        }
+        const role = roleSelect ? roleSelect.value : '';
+        window.location.href = `/login/${provider}?role=${encodeURIComponent(role)}`;
     };
 
     /* ── Auto-dismiss flash alerts ── */

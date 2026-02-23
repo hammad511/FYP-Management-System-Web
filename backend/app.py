@@ -251,7 +251,7 @@ login_manager.login_view = 'login'
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(256))
     first_name = db.Column(db.String(50))
     last_name = db.Column(db.String(50))
     role = db.Column(db.String(20))
@@ -2154,6 +2154,15 @@ def login_google():
         flash('Google OAuth is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file.', 'warning')
         return redirect(url_for('login'))
     
+    # Require role selection before Google login
+    selected_role = request.args.get('role', '').strip()
+    if not selected_role or selected_role not in ('student', 'faculty', 'teacher', 'supervisor', 'admin'):
+        flash('Please select your role before signing in with Google.', 'warning')
+        return redirect(url_for('login'))
+    
+    # Store selected role in session for use after OAuth callback
+    session['google_login_role'] = selected_role
+    
     try:
         # Use localhost instead of 127.0.0.1 for Google OAuth compatibility
         redirect_uri = url_for('authorize', _external=True).replace('127.0.0.1', 'localhost')
@@ -2176,6 +2185,12 @@ def authorize():
             flash('Failed to retrieve user information from Google. Please try again.', 'danger')
             return redirect(url_for('login'))
         
+        # Get the role that was selected before Google login
+        selected_role = session.pop('google_login_role', None)
+        if not selected_role:
+            flash('Role selection is required. Please select your role and try again.', 'warning')
+            return redirect(url_for('login'))
+        
         # Check if user exists with the given Google ID
         user = User.query.filter_by(google_id=user_info['sub']).first()
         
@@ -2184,35 +2199,40 @@ def authorize():
             user = User.query.filter_by(email=user_info['email']).first()
             
             if user:
+                # Verify the selected role matches the existing user's role
+                user_role_normalized = 'faculty' if user.role == 'teacher' else user.role
+                selected_role_normalized = 'faculty' if selected_role == 'teacher' else selected_role
+                
+                if user_role_normalized != selected_role_normalized:
+                    flash(f'Invalid role selected. You are registered as a {user.role}.', 'danger')
+                    return redirect(url_for('login'))
+                
                 # Associate Google ID with the existing account
                 user.google_id = user_info['sub']
                 db.session.commit()
             else:
-                # Create a new user (default role is student)
+                # Create a new user with the selected role
                 user = User(
                     email=user_info['email'],
                     first_name=user_info.get('given_name', ''),
                     last_name=user_info.get('family_name', ''),
-                    role='student',  # Default role
+                    role=selected_role,
                     google_id=user_info['sub']
                 )
                 db.session.add(user)
                 db.session.commit()
+        else:
+            # Existing Google-linked user — verify role matches
+            user_role_normalized = 'faculty' if user.role == 'teacher' else user.role
+            selected_role_normalized = 'faculty' if selected_role == 'teacher' else selected_role
+            
+            if user_role_normalized != selected_role_normalized:
+                flash(f'Invalid role selected. You are registered as a {user.role}.', 'danger')
+                return redirect(url_for('login'))
         
         # Log the user in
         login_user(user)
-        
-        # Redirect based on user role
-        if user.role == 'admin':
-            return redirect(url_for('dashboard'))
-        elif user.role == 'student':
-            return redirect(url_for('dashboard'))
-        elif user.role in ('faculty', 'teacher'):
-            return redirect(url_for('dashboard'))
-        elif user.role == 'supervisor':
-            return redirect(url_for('dashboard'))
-        
-        return redirect(url_for('index'))
+        return redirect(url_for('dashboard'))
     except Exception as e:
         flash(f'Google login failed: {str(e)}. Please use regular login.', 'danger')
         return redirect(url_for('login'))
