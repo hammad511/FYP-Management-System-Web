@@ -5046,51 +5046,29 @@ def recreate_tables():
     db.create_all()
     print("All tables recreated.")
 
-# Render deployment initialization
-if os.environ.get('RENDER'):
-    with app.app_context():
-        try:
-            db.create_all()
-            print("Render: Database tables created/verified.")
-            if not User.query.filter_by(role='admin').first():
-                _admin_email = os.environ.get('ADMIN_EMAIL', 'admin@example.com')
-                _admin_pw = os.environ.get('ADMIN_PASSWORD', secrets.token_urlsafe(16))
-                admin = User(email=_admin_email, first_name='Admin', last_name='User', role='admin')
-                admin.set_password(_admin_pw)
-                db.session.add(admin)
-                db.session.commit()
-                print(f"Render: Admin user created with email {_admin_email}")
-        except Exception as e:
-            print(f"Render Init Error: {e}")
-
-# Vercel / Production deployment initialization (runs on cold start)
-try:
-    if os.environ.get('VERCEL') or (os.environ.get('DATABASE_URL') and not os.environ.get('RENDER')):
-        with app.app_context():
-            try:
-                logging.info(f"Production init: Connecting to database...")
-                logging.info(f"Database URI scheme: {app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')[:30]}...")
-                db.create_all()
-                logging.info("Production init: Database tables created/verified.")
-                # Seed default admin if missing
-                _admin_email = os.environ.get('ADMIN_EMAIL', 'admin@example.com')
-                if not User.query.filter_by(email=_admin_email).first():
-                    _admin_pw = os.environ.get('ADMIN_PASSWORD', secrets.token_urlsafe(16))
-                    admin = User(email=_admin_email, first_name='Admin', last_name='User', role='admin')
-                    admin.set_password(_admin_pw)
-                    db.session.add(admin)
-                    db.session.commit()
-                    logging.info(f"Production: Admin user created with email {_admin_email}")
-                else:
-                    logging.info(f"Production: Admin user already exists: {_admin_email}")
-            except Exception as e:
-                logging.error(f"Production Init Error: {e}")
-                import traceback
-                traceback.print_exc()
-except Exception as e:
-    logging.error(f"[WARNING] Skipping production init: {e}")
-    import traceback
-    traceback.print_exc()
+# Database initialization — always runs on startup to ensure tables exist
+with app.app_context():
+    try:
+        _db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')
+        print(f"[STARTUP] Database URI: {_db_uri[:40]}...", flush=True)
+        print(f"[STARTUP] DATABASE_URL env: {'SET' if os.environ.get('DATABASE_URL') else 'NOT SET'}", flush=True)
+        db.create_all()
+        print("[STARTUP] Database tables created/verified.", flush=True)
+        # Seed default admin if missing
+        _admin_email = os.environ.get('ADMIN_EMAIL', 'admin@example.com')
+        if not User.query.filter_by(email=_admin_email).first():
+            _admin_pw = os.environ.get('ADMIN_PASSWORD', secrets.token_urlsafe(16))
+            admin = User(email=_admin_email, first_name='Admin', last_name='User', role='admin')
+            admin.set_password(_admin_pw)
+            db.session.add(admin)
+            db.session.commit()
+            print(f"[STARTUP] Admin user created: {_admin_email}", flush=True)
+        else:
+            print(f"[STARTUP] Admin user exists: {_admin_email}", flush=True)
+    except Exception as e:
+        print(f"[STARTUP ERROR] {e}", flush=True)
+        import traceback
+        traceback.print_exc()
 
 # Admin route for data integrity check
 @app.route('/admin/check-data-integrity')
