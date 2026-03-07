@@ -92,6 +92,7 @@
     --primary-50: #eff6ff;
     --primary-100: #dbeafe;
     --primary-200: #bfdbfe;
+    --primary-300: #93c5fd;
     --primary-500: #3b82f6;
     --primary-600: #2563eb;
     --primary-700: #1d4ed8;
@@ -520,20 +521,7 @@ body {
 
 /* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
-    .sidebar {
-        position: fixed;
-        left: -100%;
-        top: 70px;
-        z-index: 1000;
-        transition: left 0.3s ease;
-    }
-    
-    .sidebar.show {
-        left: 0;
-    }
-    
     .main-content {
-        margin-left: 0;
         padding: 1rem;
     }
     

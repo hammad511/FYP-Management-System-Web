@@ -83,7 +83,7 @@
         .quick-action-card:hover {
             transform: translateY(-4px);
             box-shadow: var(--shadow-lg);
-            border-color: var(--primary-300);
+            border-color: var(--primary-200);
             color: var(--primary-700);
         }
         
@@ -120,6 +120,7 @@
             align-items: center;
             justify-content: center;
             font-size: 1.25rem;
+            flex-shrink: 0;
         }
         
         .activity-icon.success {
@@ -139,6 +140,7 @@
         
         .activity-content {
             flex: 1;
+            min-width: 0;
         }
         
         .activity-title {
@@ -180,7 +182,7 @@
         
         .filter-pill {
             padding: 0.5rem 1rem;
-            border-radius: var(--radius-full);
+            border-radius: 50px;
             border: 1px solid var(--gray-300);
             background: white;
             color: var(--gray-600);
@@ -191,7 +193,7 @@
         
         .filter-pill:hover {
             background: var(--primary-50);
-            border-color: var(--primary-300);
+            border-color: var(--primary-200);
             color: var(--primary-700);
         }
         
@@ -200,39 +202,92 @@
             border-color: var(--primary-600);
             color: white;
         }
+
+        /* Stat card icon styling */
+        .stat-card > i {
+            font-size: 2rem;
+            color: var(--primary-600);
+        }
+        .stat-card.success > i { color: var(--success); }
+        .stat-card.warning > i { color: var(--warning); }
+        .stat-card.danger > i { color: var(--danger); }
+
+        /* Desktop main content padding */
+        .main-content {
+            padding: 1.5rem;
+        }
+
+        /* Sidebar overlay background for mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 1039;
+        }
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        /* Mobile sidebar toggle button */
+        .sidebar-toggle {
+            display: none;
+        }
+        
+        @media (max-width: 991.98px) {
+            .sidebar-toggle {
+                display: inline-flex;
+            }
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                top: 0;
+                width: 280px;
+                height: 100vh;
+                z-index: 1040;
+                transition: left 0.3s ease;
+                border-radius: 0;
+                padding-top: 1rem;
+            }
+            .sidebar.show {
+                left: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+            }
+        }
         
         @media (max-width: 768px) {
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 1rem;
             }
-            
             .quick-actions {
                 grid-template-columns: 1fr;
             }
-            
-            .sidebar {
-                position: fixed;
-                left: -100%;
-                top: 0;
-                z-index: 1000;
-                transition: left 0.3s ease;
+            .welcome-text {
+                font-size: 1.35rem;
             }
-            
-            .sidebar.show {
-                left: 0;
-            }
-            
-            .main-content {
-                margin-left: 0;
+        }
+
+        @media (max-width: 576px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
     <!-- Modern Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
+            <button class="btn btn-outline-primary me-2 sidebar-toggle" type="button" id="sidebarToggle">
+                <i class="bi bi-list"></i>
+            </button>
             <a class="navbar-brand" href="#">
                 <i class="bi bi-speedometer2 me-2"></i>
                 <span>FYP Admin</span>
@@ -284,10 +339,13 @@
         </div>
     </div>
 
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <div class="container-fluid">
         <div class="row g-0">
             <!-- Modern Sidebar -->
-            <div class="col-lg-2 p-0 sidebar">
+            <div class="col-lg-2 p-0 sidebar" id="sidebarNav">
                 <div class="d-flex flex-column flex-shrink-0 p-3">
                     <ul class="nav nav-pills flex-column gap-2">
                         <li class="nav-item">
@@ -1544,6 +1602,30 @@
                 }, 100);
             }
             
+            // Sidebar toggle for mobile
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarNav = document.getElementById('sidebarNav');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            if (sidebarToggle && sidebarNav) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebarNav.classList.toggle('show');
+                    sidebarOverlay.classList.toggle('show');
+                });
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebarNav.classList.remove('show');
+                    sidebarOverlay.classList.remove('show');
+                });
+                // Close sidebar when a link is clicked on mobile
+                sidebarNav.querySelectorAll('.nav-link').forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        if (window.innerWidth < 992) {
+                            sidebarNav.classList.remove('show');
+                            sidebarOverlay.classList.remove('show');
+                        }
+                    });
+                });
+            }
+
             // Quick action hover effects
             document.querySelectorAll('.quick-action-card').forEach(card => {
                 card.addEventListener('mouseenter', function() {
