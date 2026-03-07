@@ -5054,15 +5054,24 @@ with app.app_context():
         print(f"[STARTUP] DATABASE_URL env: {'SET' if os.environ.get('DATABASE_URL') else 'NOT SET'}", flush=True)
         db.create_all()
         print("[STARTUP] Database tables created/verified.", flush=True)
-        # Seed default admin if missing
+        # Seed or update admin user
         _admin_email = os.environ.get('ADMIN_EMAIL', 'admin@example.com')
-        if not User.query.filter_by(email=_admin_email).first():
-            _admin_pw = os.environ.get('ADMIN_PASSWORD', secrets.token_urlsafe(16))
+        _admin_pw = os.environ.get('ADMIN_PASSWORD')
+        admin = User.query.filter_by(email=_admin_email).first()
+        if not admin:
+            if not _admin_pw:
+                _admin_pw = secrets.token_urlsafe(16)
             admin = User(email=_admin_email, first_name='Admin', last_name='User', role='admin')
             admin.set_password(_admin_pw)
             db.session.add(admin)
             db.session.commit()
             print(f"[STARTUP] Admin user created: {_admin_email}", flush=True)
+        elif _admin_pw:
+            # Update admin password to match env variable
+            admin.set_password(_admin_pw)
+            admin.role = 'admin'
+            db.session.commit()
+            print(f"[STARTUP] Admin password updated: {_admin_email}", flush=True)
         else:
             print(f"[STARTUP] Admin user exists: {_admin_email}", flush=True)
     except Exception as e:
